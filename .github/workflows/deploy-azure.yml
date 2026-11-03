@@ -41,7 +41,17 @@ jobs:
             console.log('Owner ID:', payload.repository_owner_id);
             console.log('Ref:', payload.ref);
             console.log('Workflow ref:', payload.job_workflow_ref); 
-
+            
+      - name: Verify Azure Client ID
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          if [ "$AZURE_CLIENT_ID" = "2adc974f-a575-4d1d-a05c-401c004e0a7a" ]; then
+            echo "Azure Client ID matches ETO-GitHub-Deployment"
+          else
+            echo "::error::Azure Client ID does not match"
+            exit 1
+          fi
       - name: Azure login using OIDC
         uses: azure/login@v2
         with:
