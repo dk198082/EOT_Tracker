@@ -1,0 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --app-font-sans: "Inter", sans-serif;
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --border: 214 32% 91%;
+  --muted-foreground: 215 16% 47%;
+  --radius: 0.5rem;
+}
+
+.eto-current {
+  font-family: var(--app-font-sans);
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.eto-current .eto-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+}
+
+.eto-current .eto-nav-link {
+  transition: background-color 150ms, color 150ms;
+}
+
+.eto-current .eto-nav-link:hover {
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+
+.eto-current .eto-table-row:hover {
+  background: #f8fafc;
+}

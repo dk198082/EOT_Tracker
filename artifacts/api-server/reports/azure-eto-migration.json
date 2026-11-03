@@ -1,0 +1,114 @@
+{
+  "database": "d365crm",
+  "schema": "crm",
+  "tables": [
+    {
+      "source": "public.users",
+      "destination": "crm.eto_users",
+      "rows": 13,
+      "verified": true
+    },
+    {
+      "source": "public.sessions",
+      "destination": "crm.eto_sessions",
+      "rows": 21,
+      "verified": true
+    },
+    {
+      "source": "public.eto_requests",
+      "destination": "crm.eto_requests",
+      "rows": 12,
+      "verified": true
+    },
+    {
+      "source": "public.stage_transitions",
+      "destination": "crm.eto_stage_transitions",
+      "rows": 148,
+      "verified": true
+    },
+    {
+      "source": "public.comments",
+      "destination": "crm.eto_comments",
+      "rows": 1,
+      "verified": true
+    },
+    {
+      "source": "public.attachments",
+      "destination": "crm.eto_attachments",
+      "rows": 5,
+      "verified": true
+    },
+    {
+      "source": "public.engineering_outputs",
+      "destination": "crm.eto_engineering_outputs",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "source": "public.production_outputs",
+      "destination": "crm.eto_production_outputs",
+      "rows": 10,
+      "verified": true
+    },
+    {
+      "source": "public.art_final_outputs",
+      "destination": "crm.eto_art_final_outputs",
+      "rows": 6,
+      "verified": true
+    },
+    {
+      "source": "public.detail_changes",
+      "destination": "crm.eto_detail_changes",
+      "rows": 14,
+      "verified": true
+    },
+    {
+      "source": "public.data_imports",
+      "destination": "crm.eto_data_imports",
+      "rows": 3,
+      "verified": true
+    },
+    {
+      "source": "public.review_assignment_defaults",
+      "destination": "crm.eto_review_assignment_defaults",
+      "rows": 1,
+      "verified": true
+    },
+    {
+      "source": "public.price_calculator_settings",
+      "destination": "crm.eto_price_calculator_settings",
+      "rows": 0,
+      "verified": true
+    },
+    {
+      "source": "public.eto_price_calculator",
+      "destination": "crm.eto_price_calculator",
+      "rows": 2,
+      "verified": true
+    },
+    {
+      "source": "public.design_formula_settings",
+      "destination": "crm.eto_design_formula_settings",
+      "rows": 0,
+      "verified": true
+    },
+    {
+      "source": "public.design_formula_changes",
+      "destination": "crm.eto_design_formula_changes",
+      "rows": 0,
+      "verified": true
+    },
+    {
+      "source": "public.assembly_formula_settings",
+      "destination": "crm.eto_assembly_formula_settings",
+      "rows": 0,
+      "verified": true
+    },
+    {
+      "source": "public.assembly_formula_changes",
+      "destination": "crm.eto_assembly_formula_changes",
+      "rows": 0,
+      "verified": true
+    }
+  ]
+}

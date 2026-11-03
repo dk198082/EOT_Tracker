@@ -1,0 +1,394 @@
+UX Standards Discovery & Consolidation
+Objective
+Analyze the current application codebase and identify the UX design patterns, conventions, components, interaction behaviors, and visual standards that have been implemented.
+The goal is not to redesign the application.
+The goal is to extract and document the UX decisions that already exist so they can be compared with UX standards from other applications and ultimately consolidated into a reusable enterprise UX standard.
+The resulting Markdown document will become the source of truth for a future shared TypeScript UX foundation used by new applications.
+
+1. Analyze Before Documenting
+Inspect the application comprehensively before producing the UX Standards document.
+Review, where applicable:
+	• React components
+	• TypeScript files
+	• CSS
+	• Tailwind configuration
+	• theme files
+	• design tokens
+	• shared components
+	• layouts
+	• navigation
+	• forms
+	• tables
+	• dialogs/modals
+	• buttons
+	• cards
+	• notifications
+	• status indicators
+	• validation
+	• loading states
+	• error states
+	• empty states
+	• responsive behavior
+	• accessibility implementation
+	• icons
+	• typography
+	• spacing
+	• colors
+	• borders
+	• shadows
+	• hover/focus/disabled states
+	• page-level layouts
+	• application shell
+	• header
+	• sidebar
+	• breadcrumbs
+	• search
+	• filters
+	• pagination
+	• sorting
+	• data entry
+	• confirmation patterns
+Do not infer a standard merely because a framework or library supports it.
+Document what is actually implemented.
+
+2. Separate Standards From Application-Specific Choices
+For every UX pattern, determine whether it is:
+STANDARD
+A reusable UX convention that should potentially apply across applications.
+APPLICATION-SPECIFIC
+A decision that is appropriate to this application’s business process but should not automatically become an enterprise standard.
+CANDIDATE STANDARD
+A useful pattern that appears intentional and reusable, but should be reviewed before becoming part of the enterprise UX standard.
+INCONSISTENT
+A pattern that conflicts with another implementation or appears to have been implemented differently in different places.
+UNKNOWN
+The code does not provide enough evidence to determine the intended standard.
+Do not convert application-specific behavior into a corporate UX standard simply because it exists.
+
+3. Use a Common UX Taxonomy
+Organize findings into the following categories.
+3.1 Application Shell
+Document:
+	• overall application frame
+	• header
+	• application title
+	• logo
+	• user/profile area
+	• global navigation
+	• sidebar
+	• breadcrumbs
+	• page hierarchy
+	• global search
+	• help
+	• notifications
+	• settings
+	• responsive behavior
+
+3.2 Layout
+Document:
+	• page width
+	• content margins
+	• grid structure
+	• column behavior
+	• spacing scale
+	• section spacing
+	• card usage
+	• alignment
+	• density
+	• responsive breakpoints
+
+3.3 Typography
+Document:
+	• font family
+	• heading hierarchy
+	• body text
+	• labels
+	• helper text
+	• table text
+	• emphasis
+	• font sizes
+	• font weights
+	• line heights
+
+3.4 Color
+Document actual implemented values where possible.
+Capture:
+	• primary brand color
+	• secondary colors
+	• background colors
+	• surface colors
+	• text colors
+	• muted text
+	• border colors
+	• success
+	• warning
+	• error
+	• informational states
+	• hover states
+	• selected states
+	• disabled states
+Use hexadecimal values where available.
+
+3.5 Buttons and Actions
+Document:
+	• primary button
+	• secondary button
+	• tertiary/text button
+	• destructive action
+	• icon-only action
+	• button sizing
+	• placement
+	• hierarchy
+	• disabled behavior
+	• loading behavior
+	• confirmation requirements
+Identify which actions should normally be primary versus secondary.
+
+3.6 Forms
+Document:
+	• field layout
+	• label placement
+	• required indicators
+	• field sizing
+	• help text
+	• validation
+	• error messages
+	• read-only fields
+	• disabled fields
+	• dropdowns
+	• autocomplete
+	• date/time controls
+	• numeric fields
+	• multiline fields
+	• form sections
+	• save/cancel behavior
+	• unsaved-change behavior
+
+3.7 Tables and Data Grids
+Document:
+	• table density
+	• column alignment
+	• column widths
+	• sorting
+	• filtering
+	• pagination
+	• row selection
+	• row actions
+	• expandable rows
+	• sticky headers
+	• empty state
+	• loading state
+	• responsive behavior
+	• export behavior
+
+3.8 Status and State
+Document the standard visual treatment for:
+	• Active
+	• Inactive
+	• Draft
+	• Pending
+	• Complete
+	• Failed
+	• Warning
+	• Error
+	• New
+	• In Progress
+	• On Hold
+	• Archived
+Capture:
+	• color
+	• icon
+	• badge/chip treatment
+	• wording
+	• placement
+
+3.9 Notifications and Feedback
+Document:
+	• toast notifications
+	• inline messages
+	• banners
+	• confirmation messages
+	• success messages
+	• warning messages
+	• error messages
+	• duration
+	• dismiss behavior
+	• severity hierarchy
+
+3.10 Dialogs and Modals
+Document:
+	• modal sizing
+	• title treatment
+	• button placement
+	• close behavior
+	• confirmation dialogs
+	• destructive confirmations
+	• multi-step dialogs
+	• backdrop behavior
+
+3.11 Navigation and Interaction
+Document:
+	• navigation hierarchy
+	• active navigation treatment
+	• hover behavior
+	• breadcrumbs
+	• tabs
+	• accordions
+	• drawers
+	• links
+	• keyboard interaction
+	• shortcuts where applicable
+
+3.12 Loading, Empty and Error States
+Document the standard treatment for:
+Loading
+	• spinner
+	• skeleton
+	• progress indicator
+Empty
+	• message
+	• icon
+	• recommended action
+Error
+	• message
+	• severity
+	• recovery action
+	• technical detail visibility
+
+3.13 Search and Filtering
+Document:
+	• search placement
+	• search behavior
+	• filter controls
+	• filter chips
+	• clear filters
+	• saved filters
+	• default filters
+	• filtering feedback
+
+3.14 Accessibility
+Document observable implementation of:
+	• keyboard navigation
+	• focus indicators
+	• semantic HTML
+	• ARIA
+	• color contrast
+	• screen-reader labels
+	• form accessibility
+	• modal accessibility
+	• table accessibility
+Identify accessibility standards that appear intentional versus accidental.
+
+4. Capture Actual Evidence
+For every significant UX standard, provide evidence from the application.
+Use this format:
+
+UX Pattern	Current Implementation	Evidence	Classification
+Primary Button	Green filled button	Button.tsx	Candidate Standard
+Page Header	Title + subtitle	PageHeader.tsx	Standard
+Status Badge	Colored pill	StatusBadge.tsx	Candidate Standard
+Reference the actual component, file, CSS class, token, or implementation where possible.
+Do not make unsupported assumptions.
+
+5. Identify Reusable Components
+Create a separate inventory of components that could become part of a shared UX library.
+Examples:
+	• AppShell
+	• PageHeader
+	• Breadcrumbs
+	• PrimaryButton
+	• SecondaryButton
+	• StatusBadge
+	• DataTable
+	• SearchBar
+	• FilterBar
+	• FormSection
+	• FormField
+	• ConfirmationDialog
+	• Toast
+	• EmptyState
+	• ErrorState
+	• LoadingState
+	• Modal
+	• Tabs
+	• Card
+	• KPI Card
+For each component document:
+	• current name
+	• purpose
+	• visual behavior
+	• interaction behavior
+	• variants
+	• props
+	• application-specific dependencies
+	• reuse potential
+
+6. Identify Design Tokens
+Extract reusable design tokens wherever possible.
+Document:
+Color Tokens
+--color-primary
+--color-secondary
+--color-background
+--color-surface
+--color-text
+--color-text-muted
+--color-border
+--color-success
+--color-warning
+--color-error
+--color-info
+Typography Tokens
+--font-family
+--font-size-xs
+--font-size-sm
+--font-size-md
+--font-size-lg
+--font-size-xl
+--font-weight-normal
+--font-weight-medium
+--font-weight-bold
+Spacing Tokens
+--space-xs
+--space-sm
+--space-md
+--space-lg
+--space-xl
+Radius
+--radius-sm
+--radius-md
+--radius-lg
+Elevation
+Document shadows or elevation levels if used.
+
+7. Identify UX Inconsistencies
+Look specifically for cases where the same interaction is implemented differently.
+Examples:
+	• Two different primary button styles
+	• Different meanings for the same status color
+	• Different form label placement
+	• Different modal behavior
+	• Different table density
+	• Different spacing
+	• Different error-message conventions
+	• Different navigation patterns
+For each inconsistency document:
+	1. Pattern
+	2. Implementation A
+	3. Implementation B
+	4. Likely intended standard
+	5. Recommendation for human review
+Do not automatically choose a winner.
+
+8. Identify UX Decisions That Should NOT Become Standards
+Explicitly identify application-specific patterns that should remain local to the application.
+Examples:
+	• specialized workflow layouts
+	• domain-specific terminology
+	• unusual data-entry sequences
+	• specialized production scheduling controls
+	• application-specific dashboards
+	• unique business-process states
+This is important.
+The purpose of the standard is to create consistency without forcing every application into the same UX model.
+

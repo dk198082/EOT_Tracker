@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- specimen rectangle -->
+  <rect x="12" y="18" width="40" height="28" rx="2" stroke="#1E3A5F" stroke-width="3" fill="none"/>
+  <!-- grip tabs left -->
+  <rect x="4" y="24" width="8" height="16" rx="1" fill="#1E3A5F"/>
+  <!-- grip tabs right -->
+  <rect x="52" y="24" width="8" height="16" rx="1" fill="#1E3A5F"/>
+  <!-- force arrows -->
+  <path d="M12 32 L5 32 M5 32 L8 29 M5 32 L8 35" stroke="#E8A020" stroke-width="2" stroke-linecap="round"/>
+  <path d="M52 32 L59 32 M59 32 L56 29 M59 32 L56 35" stroke="#E8A020" stroke-width="2" stroke-linecap="round"/>
+  <!-- label text -->
+  <text x="32" y="34" font-size="8" font-family="system-ui" font-weight="700" fill="#1E3A5F" text-anchor="middle">ETO</text>
+</svg>

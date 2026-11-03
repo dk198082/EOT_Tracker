@@ -1,0 +1,192 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "OLmtgsC0ISFIIdpoSg0hg"
+uri = "file://artifacts/eto-tracker/public/eto-workflow-diagram.svg"
+type = "image"
+title = "ETO Workflow Diagram"
+description = "Full stage/decision/role flow for ETO Tracker — all three routing paths, more-info loops, and role legend. Download from the app sidebar Workflow page."
+logical_id = "58a06e84-b60f-42b9-a261-ed5d50b9b1aa"
+
+[[outputs]]
+id = "zpqYm-7rnxM3eGK5Jo6wm"
+uri = "file://docs/ETO_TRACKER_APP_OVERVIEW.md"
+type = "text"
+title = "ETO Tracker — Application Overview"
+description = "Business and technical overview covering functionality, roles, workflow, integrations, data model, API surface, security, operations, and current limitations."
+logical_id = "801f4039-a41a-4821-bd05-ab10aacffddd"
+content_hash = "sha256:f5cf626dd5198c2307adff8e44d872db8e0edc30d5bc7472eba461382ee536a3"
+size = 21756
+mtime_ms = 1788354582427
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/801f4039-a41a-4821-bd05-ab10aacffddd/9b26a41c-3069-485e-a20c-cb4273bf7769"
+storage_version_token = "1788354595042307"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "P0ZdMK5e3uo5_zc_NP5nY"
+uri = "file://docs/ETO_TRACKER_UX_STANDARDS.md"
+type = "text"
+title = "ETO Tracker UX Standards Discovery"
+description = "Evidence-based Markdown inventory of implemented UX patterns, reusable candidates, tokens, inconsistencies, and ETO-specific decisions."
+logical_id = "2debb5e5-fd72-4445-bd83-6735c462f0b6"
+content_hash = "sha256:654666b67315cd70abf6cdbb591bfc05ee36247628136c513f999648449398e7"
+size = 28326
+mtime_ms = 1790189601851
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/2debb5e5-fd72-4445-bd83-6735c462f0b6/1930eb30-eb8b-44d9-a007-cfb98927f036"
+storage_version_token = "1790189613907855"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "oisbrENBsnhJvi5xFY-gh"
+uri = "file://docs/ETO_MVP_Contract.md"
+type = "text"
+title = "ETO Tracker — MVP Contract"
+description = "Updated MVP baseline: workflow, roles, intake, data, notifications, reporting, and technical scope."
+logical_id = "63bba07d-1f86-430d-9dbd-dba1ed90108c"
+content_hash = "sha256:d6e623941e4e9cc8a0bf06de7ab0692c83cbbec5910325376d7fcfda84ae377c"
+size = 11527
+mtime_ms = 1790738362151
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/63bba07d-1f86-430d-9dbd-dba1ed90108c/4a149a24-142e-4a7b-a96c-5d64d6ea4456"
+storage_version_token = "1790738379526325"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "KeKOCSSzoPZ3NAu2uIoC6"
+uri = "file://docs/ETO_Business_Process_Brief.md"
+type = "text"
+title = "ETO — Business & Process Brief"
+description = "Updated business process, current stages, review handoffs, and remaining goals."
+logical_id = "57184100-84bb-4faf-982f-9c1bf5c069ec"
+content_hash = "sha256:0743755a1e90fb098d631446f1ca39b2a7ea8e1516220d0717099206256cdd5f"
+size = 7149
+mtime_ms = 1790738262562
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/57184100-84bb-4faf-982f-9c1bf5c069ec/aafb6f8b-4406-4862-b5aa-c5d1d9fcc9a1"
+storage_version_token = "1790738380242267"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "8r8xUNon9aoCv8l_G2N0q"
+uri = "file://docs/ETO_MVP_Solution_Blueprint.md"
+type = "text"
+title = "ETO Tracker — MVP Solution Blueprint"
+description = "Updated as-built screens, data objects, workflow, integrations, and deferred features."
+logical_id = "d8737613-f1e3-4ebe-aab8-32011075ce6e"
+content_hash = "sha256:7c9eb6310b055b647ac48b33e7556ce48d2ec21d8f2094cf2c30cb2bcb3fe807"
+size = 7560
+mtime_ms = 1790738321995
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/d8737613-f1e3-4ebe-aab8-32011075ce6e/c9f36ce3-37d8-41f7-b58e-74114ad4e952"
+storage_version_token = "1790738380878280"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "VWZqF_PmpYL2M7SdP8x1O"
+uri = "file://docs/ETO_Tracker_Technical_Details.md"
+type = "text"
+title = "ETO Tracker — Technical Details and End-to-End Flow"
+description = "As-built architecture, functions, HTTP API, data model, stage pipeline, security, attachments, notifications, and failure boundaries."
+logical_id = "c04d0894-a0b7-4ce9-9111-ab96d56dd2f1"
+content_hash = "sha256:af272fd85cb0811444ef178efc3abd0dab22bd353a1e18579bf0ffa696d55f15"
+size = 28245
+mtime_ms = 1790738909094
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/c04d0894-a0b7-4ce9-9111-ab96d56dd2f1/19d32bf5-e22f-4256-909a-138e771ee799"
+storage_version_token = "1790738919586147"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "9G42mkxTdRIb6wD5PZgH1"
+uri = "file://reports/eto-local-table-design.html"
+type = "html"
+title = "Complete Local Database Table Design"
+description = "Verified design of all 18 local ETO Tracker tables: 181 columns, data types, nullability, defaults, keys, relationships, delete rules, and all indexes. Open in a browser or print to PDF."
+logical_id = "202d6388-2bf9-4d29-99dd-d0f21adc8a2d"
+content_hash = "sha256:a6d13d3f31ba49210d72fb7a8eb44b0ca8135d288ee2214ed9b40b0182201797"
+size = 45981
+mtime_ms = 1791265146064
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/202d6388-2bf9-4d29-99dd-d0f21adc8a2d/fcc0be19-2ce8-4e8e-b994-4e29dbd9af1d"
+storage_version_token = "1791265147194071"
+content_type = "text/html"
+
+[[outputs]]
+id = "CfGVuCej04jtaLXoIUWv3"
+uri = "file://reports/azure-eto-cutover-verification.html"
+type = "html"
+title = "Azure ETO Migration & Verification Report"
+description = "All 18 crm.eto_* table mappings, copied-record counts, database checks, browser verification and publishing precautions."
+logical_id = "aa62dfe5-e44f-44b0-bc6d-086bc09b5e47"
+content_hash = "sha256:6a93e58f95db69b1f71dc7a8f66f9bb229f62adca569d978acaba14d2d5acbd0"
+size = 7715
+mtime_ms = 1791430143282
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/aa62dfe5-e44f-44b0-bc6d-086bc09b5e47/77a96016-aa78-4679-9aee-63f82879a4f8"
+storage_version_token = "1791430143978714"
+content_type = "text/html"
+
+[[outputs]]
+id = "QTWhmfN7xtTLp1Jbr8QsE"
+uri = "file://reports/eto-production-azure-readonly-audit.html"
+type = "html"
+title = "Production vs Azure — Read-only Data Audit"
+description = "Missing production requests, ETO-number collisions, user/role differences, table counts and decisions needed before publishing."
+logical_id = "10956be4-005e-41df-9516-a26759f59be6"
+content_hash = "sha256:ab517d250566ad53c148cab7ea3266bdd4c38cbd6a2e507bb99815e1840cc69d"
+size = 10866
+mtime_ms = 1791431406190
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/10956be4-005e-41df-9516-a26759f59be6/cb625d76-df65-4722-b0e6-9aeb9531d964"
+storage_version_token = "1791431407188181"
+content_type = "text/html"
+
+[[outputs]]
+id = "vJS8y1dTXWtQV4PY5_N7Z"
+uri = "file://reports/eto-production-migration-plan.html"
+type = "html"
+title = "Shared Dataset Plan — Archive Policy Confirmed"
+description = "Production versions stay active; the three conflicting workspace requests retain their numbers, history and files as read-only archives. Execution has not begun."
+logical_id = "9fa74b49-bb20-4bd5-9dd4-f842876596ee"
+content_hash = "sha256:b6ad198277e511a498acfc6581610ef2c4a1ef131bb35673439e0b8f327b301a"
+size = 17241
+mtime_ms = 1791436135222
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/9fa74b49-bb20-4bd5-9dd4-f842876596ee/ebb7a22e-8cb9-4f99-8984-c35224ff0470"
+storage_version_token = "1791436135971550"
+content_type = "text/html"
+
+[[outputs]]
+id = "2MPzEROaHIA2zbMlbaPZj"
+uri = "file://reports/eto-shared-merge-preparation-verification.html"
+type = "html"
+title = "Shared Dataset Preparation — Verification Report"
+description = "39 isolated tests passed; offline reconciliation and policy helpers prepared. No live migration, archive activation or publishing."
+logical_id = "dd4b052e-d04e-4286-9af7-0be5435f3bd2"
+content_hash = "sha256:f9c438ddb742a84d5bd1456a14433474074a5f6f490efe1de1e657f63ec6bb1c"
+size = 4961
+mtime_ms = 1791437048838
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/dd4b052e-d04e-4286-9af7-0be5435f3bd2/1e194351-9dbc-4b15-b4a6-12ab6fdbeeab"
+storage_version_token = "1791437049864020"
+content_type = "text/html"
+
+[[outputs]]
+id = "wxG4zbPoqKud5P6i-Nx2t"
+uri = "file://reports/eto-published-app-operations-and-tables.docx"
+type = "word_document"
+title = "Published App Operations & Azure Tables — Word Document"
+description = "Editable reference covering 37 activities, user roles, reads/inserts/updates/deletes, API actions and all 18 Azure tables with 181 columns and relationships."
+logical_id = "8ec32f29-e618-4834-ac03-6aa227997106"
+content_hash = "sha256:783ef51a5ee2d8213325d6678280e8fd614ff50a3bdde7baf0d92e37c769cf4e"
+size = 22342
+mtime_ms = 1791445007961
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/8ec32f29-e618-4834-ac03-6aa227997106/e1b889a9-aa87-42f6-be07-2e4194873d35"
+storage_version_token = "1791445066541118"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+[[outputs]]
+id = "MzoM-5QtQcdtyMxuMcuxd"
+uri = "file://reports/eto-published-app-operations-and-tables.html"
+type = "html"
+title = "Published App Operations & Azure Tables — Printable Reference"
+description = "Self-contained browser version of the same document, with the full operation mapping and schema appendix. Use Print to save as PDF."
+logical_id = "0305ef1e-4d59-4de8-9d31-3bb9857a1275"
+content_hash = "sha256:77f10803d21c5c8fb0a0ade081e50d96f96b1b2945e23c58914675fc445f36be"
+size = 72108
+mtime_ms = 1791445007966
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/0305ef1e-4d59-4de8-9d31-3bb9857a1275/75dd69a4-4ce2-4d73-8661-ef3b567c651e"
+storage_version_token = "1791445067144156"
+content_type = "text/html"

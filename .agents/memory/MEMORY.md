@@ -1,0 +1,23 @@
+- [Zod v4 codegen fix](zod-v4-codegen.md) — Orval v8.23+ generates zod.int()/zod.email() (Zod v4 APIs) but workspace uses Zod v3; post-process generated files after codegen.
+- [ETO workflow state machine](eto-workflow.md) — stage/decision/role matrix; defaults apply on stage entry, while existing assignments and sticky reviewers remain intact.
+- [Entra identity mapping](entra-auth-identity.md) — Microsoft Entra authenticates users; preserve the existing role-bearing users table and link identities by Entra object ID.
+- [Role snapshots and late Entra sign-ins](entra-role-snapshots.md) — a completed one-time role import does not cover users who first sign in afterward; repair only verified target identities.
+- [Currency handling](currency-handling.md) — Store currency as a separate ISO code beside each monetary text value; USD is the backward-compatible default.
+- [Measurement units](measurement-units.md) — Keep force and displacement units separate from entered range text.
+- [Engineering output replacement](engineering-output-replacement.md) — Keep legacy cost and lead-time data intact when collecting estimated design hours.
+- [Production output units](production-output-units.md) — Keep prior week-based production values distinct from new procurement and assembly estimates.
+- [Attachment OCR isolation](attachment-ocr-isolation.md) — Keep parser/OCR packages external and run Tesseract in a child process; bundled/in-process workers can crash Node 24.
+- [Attachment previews](attachment-previews.md) — Edge may block signed or blob PDF iframes; stream safe preview types through an authenticated same-origin inline endpoint.
+- [SuperUser role simulation](superuser-role-simulation.md) — Simulation changes effective permissions only; identity, stored role, ownership, and audit actor remain the authenticated SuperUser.
+- [Scoped package installation](scoped-package-installation.md) — package installer targets the workspace root and rejects filter flags; avoid relying on it for scoped monorepo additions.
+- [Review risk semantics](review-risk.md) — score required for saves/completion; High needs a dedicated explanation; historical null is not Low risk.
+- [Required field markers](required-field-markers.md) — every required input needs a red asterisk, including conditional requirements.
+- [ETO due dates](eto-due-dates.md) — deadline starts at ART acceptance; count only included reviews plus ART Final Review; returns do not reset it.
+- [Pricing and money rules](price-calculator.md) — whole-number money throughout; independent ETO percentages; additive margin; mixed-currency totals labeled, never converted.
+- [Request Details permissions](request-details-permissions.md) — only ART and SuperUser may edit existing details; ownership grants no exception.
+- [ETO numbering policy](eto-numbering.md) — new drafts remain unnumbered until first submission to ART; never clear or renumber previously assigned numbers.
+- [PostgreSQL catalog arrays](postgres-catalog-arrays.md) — cast catalog identifiers to text inside ARRAY queries; node-postgres does not parse name[] as JavaScript arrays.
+- [Shared dataset policy](shared-dataset-policy.md) — reconcile into one crm.eto_* dataset; no separate permanent production table set.
+- [Shared cutover clients](shared-cutover-clients.md) — never refresh an old open form into a new remapped identity; reject it and require reopening the intended record.
+- [Portal color safety](portal-color-safety.md) — verify computed popup colors; semantic theme utilities can render transparent until the shared palette is repaired.
+- [Email notification policy](email-notification-policy.md) — independent Admin switches start off; recipient rules, final-quote contents and published links.

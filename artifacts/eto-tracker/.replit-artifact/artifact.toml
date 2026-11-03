@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ETO Tracker"
+description = "A web application for managing Engineer-To-Order (ETO) requests through a staged review workflow. Provides a centralized system of record for Sales intake, ART review, Engineering and Production consultation, and final quoting. Includes a real-time metrics dashboard, role-based access control, threaded comments, file attachments, and email notifications."
+version = "1.0.0"
+id = "artifacts/eto-tracker"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24505
+
+[services.development]
+run = "pnpm --filter @workspace/eto-tracker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/eto-tracker", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/eto-tracker/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24505"
+BASE_PATH = "/"

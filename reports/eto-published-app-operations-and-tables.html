@@ -1,0 +1,394 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>ETO Tracker — Published App Operations &amp; Azure Table Reference</title><style>
+@page{size:A4;margin:17mm}
+*{box-sizing:border-box}body{font:15px/1.6 Arial,sans-serif;color:#24364b;background:#f2f5f9;margin:0}
+main{max-width:1080px;margin:24px auto;padding:40px;background:white;border:1px solid #d8e1eb}
+h1,h2,h3{color:#173657;line-height:1.3}h1{font-size:30px}h2{font-size:23px;margin-top:38px}
+h3{font-size:18px;margin-top:30px;break-after:avoid}header{border-bottom:3px solid #24486b;padding-bottom:16px}
+.eyebrow{font-size:12px;font-weight:bold;letter-spacing:1px;color:#5e7187}
+table{border-collapse:collapse;width:100%;table-layout:fixed;margin:16px 0;font-size:12px}
+th,td{border:1px solid #cfd8e3;padding:8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+th{background:#eaf0f7}thead{display:table-header-group}tr{break-inside:avoid}
+p{margin:10px 0}nav{font-size:13px;padding:10px 0}a{color:#24486b}
+@media(max-width:640px){main{padding:18px;margin:0;border:0}table{font-size:11px}th,td{padding:5px}}
+@media print{body{background:white;font-size:10pt}main{padding:0;margin:0;border:0;max-width:none}
+h1{font-size:23pt}h2{font-size:17pt}h3{font-size:13pt}table{font-size:8pt}nav{display:none}
+h2,h3{break-after:avoid}header{break-inside:avoid}a{color:inherit}}
+</style></head><body><main><nav>Self-contained printable reference. Use your browser’s Print command to save a PDF.</nav><header><p class='eyebrow'>OPERATIONS REFERENCE · 8 October 2026</p><h1>ETO Tracker — Published App Operations &amp; Azure Table Reference</h1><p>37 activities · 18 tables · 181 columns · 19 physical foreign keys</p></header>
+<p>For users, administrators and support teams. Includes an activity-to-table mapping and a full column/constraint appendix. No live data or credentials are included.</p>
+<h2>Document directory</h2>
+<p>User guide: connection, roles, workflow, storage, audits and important limitations.</p>
+<p>Activity index: quickly identify tables changed by each operation.</p>
+<p>Activity details: roles, reads, writes, principal fields, endpoints and behavior.</p>
+<p>Table directory: purpose and row structure for all 18 application tables.</p>
+<p>Schema appendix: all 181 columns, defaults, nullability, primary/unique/foreign keys.</p>
+<h2>1. Purpose and verified scope</h2>
+<p>This reference maps published ETO Tracker activities to Azure PostgreSQL tables and describes what each action reads, inserts, updates or deletes. It is an operations reference, not a migration plan. Prepared 8 October 2026 from current API/UI code and read-only Azure catalog inspection.</p>
+<p>Published app: https://process-brief-generator.replit.app (private deployment at the time of verification). Database: d365crm. Application schema: crm. All 18 current app tables begin eto_. The catalog contains 181 columns and 19 physical foreign keys. No business rows, user identities, credentials or session payloads are included.</p>
+<p>Scope distinction: table structures and route behavior were inspected. This document is not a claim that every production form was retested in a signed-in browser. It does not perform database changes, publish the app or create project tasks.</p>
+<h2>2. Connection and where to view the tables</h2>
+<p>Published browser → API under /api → Azure PostgreSQL connection pool → d365crm → crm.eto_* tables. Application runtime uses the AZURE_PG_* connection settings, not the retained legacy DATABASE_URL. Secrets are never included in this document.</p>
+<p>The Replit Development/Production database pane shows Replit-managed databases, not the external Azure database. Inspect Azure using an Azure-connected PostgreSQL client: d365crm → Schemas → crm → Tables. Old managed public-schema tables remaining in that pane do not mean Azure table creation failed.</p>
+<p>If development and published environments point to the same Azure database/schema, they share the same records. A development edit can affect data visible in the published app. They are not independent copies simply because Replit has separate database panes.</p>
+<h2>3. Reading the operation descriptions</h2>
+<p>READ = SELECT existing data. INSERT = add a row. UPDATE = modify an existing row. DELETE = remove a row. INSERT / UPDATE means save-or-update (upsert). Conditional writes happen only when the stated condition applies.</p>
+<p>All protected activities implicitly read crm.eto_sessions and crm.eto_users for authentication/role enforcement. Operation-specific Read tables below list additional or principal business dependencies; pages may load separate sections through multiple requests.</p>
+<p>Table names and columns are physical PostgreSQL names (snake_case). JSON/form fields may use camelCase; eto_request_id and etoRequestId refer to the same link at their respective layers. Database NOT NULL is not the complete UI-required-field rule.</p>
+<h2>4. Roles and important limits</h2>
+<p>Sales creates drafts; Sales or ART may submit/close quoted requests under workflow rules. ART edits existing Request Details, coordinates reviews, splits requests and completes ART Final Review. Engineering and Production perform their own completion decisions; ART can also save their output sections.</p>
+<p>Admin and SuperUser manage users and global defaults/formulas. SuperUser can perform business role actions; ordinary Admin does not automatically bypass every business-role check. Simulation changes effective permission only, retaining the real identity and stored role.</p>
+<p>Every transition must also be valid for the current stage. Being the request creator/owner does not give permission to edit existing Request Details. Privileged user edits/deletes have lockout/default-reviewer protections.</p>
+<h2>5. Normal request journey</h2>
+<p>Draft → ART Review → Engineering Review (if selected) → Production Review (if selected) → ART Final Review → Quoted → Won or Lost. Returns can move the request back to the permitted earlier stage; ART may decline or abandon under the allowed stage rules. An abandoned request may be reopened.</p>
+<p>The database numeric id is created when the draft is inserted. The displayed ETO number remains empty until first successful submission to ART. Subsequent returns/resubmissions keep that number. Split children have a parent_eto_request_id, split_sequence and suffixed references.</p>
+<p>Due dates start at the first ART acceptance and count only included Engineering/Production durations plus ART Final Review. Return loops do not reset the deadline. Old missing schedule values remain unknown rather than being invented.</p>
+<p>Saving a review output and completing its workflow stage are different actions: output saves do not independently advance the stage. Completing a review updates the request and activity history and may save its output inside the same transition transaction.</p>
+<h2>6. Storage, audit and data rules</h2>
+<p>PostgreSQL stores attachment metadata and extraction/search state. File bytes are stored in object storage; upload URL creation, byte transfer and metadata registration are separate steps. Downloads/previews read metadata and storage bytes, without changing request state.</p>
+<p>Money is stored in text amount fields with separate currency codes; amounts use whole-number money rules. No silent exchange-rate conversion is performed for mixed-currency totals. Measurement units are independent from entered range text. Historical cost/lead-time fields remain distinguishable from current design-hours, procurement and assembly estimates.</p>
+<p>Risk score is required when saving/completing reviews; High risk requires a dedicated explanation. A historical null risk score is unknown, not Low. Nullable columns support historical records and do not mean those values are optional for current forms.</p>
+<p>Workflow events go to eto_stage_transitions. Field edits go to eto_detail_changes. Global design/assembly changes have their own history tables; actors are retained in formula-history snapshots. Identical formula saves do not create a new change entry.</p>
+<p>Settings tables use id=1 as their singleton setting. Empty settings tables can use code defaults on READ; reading them does not necessarily create a row. Global formula changes do not retroactively recalculate every saved request output.</p>
+<h2>7. Operations not to confuse with deletion or activation</h2>
+<p>There is no current request DELETE endpoint and no comment edit/delete endpoint. Won/Lost/Declined/Abandoned are status changes, not physical deletion. Database ON DELETE CASCADE rules describe what SQL would do if a parent were deleted; they are not proof of a user-facing delete button.</p>
+<p>Attachment DELETE is available under its permission checks. User DELETE is available to privileged users but can be rejected by protection checks or existing restrictive foreign keys. No user-facing operation deletes audit history.</p>
+<p>Optional shared-archive controls are conditional on a separately installed compatible schema. At the last direct verification, archive mode was inactive and the catalog remained the 18 tables documented here. Do not assume every request is an archive or that future archive-state/number-registry tables already exist.</p>
+<p>Opening the app does not automatically send email if provider settings are missing. There is no notification delivery-log table. Object-storage work and email delivery are external side effects, not PostgreSQL rows.</p>
+<h2>8. Relationships and troubleshooting</h2>
+<p>eto_requests is the parent business record. Transitions, comments, attachments, edit history and review outputs point to its id using eto_request_id. Each Engineering/Production/ART Final output has a unique eto_request_id, allowing one saved output per request.</p>
+<p>eto_price_calculator uses eto_request_id as both primary key and foreign key. eto_requests links back to eto_users for submitter/reviewers and to itself for split parents. Activity/comment/attachment/edit-history authors reference eto_users.</p>
+<p>Formula-history actor_user_id values are logical links to users without physical FK constraints; actor_name/actor_email snapshots retain the attribution. The schema appendix lists actual physical FK delete behaviors, not implied ones.</p>
+<p>If an operation fails: confirm sign-in, effective role, request stage, required values and current record context. Verify the Azure target and table/sequence permissions through authorized diagnostics. Do not rename/delete legacy managed tables or rerun bootstrap/imports just because the database pane looks different.</p>
+<p>For inspection only, run in the Azure connection: SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = &#x27;crm&#x27; AND left(table_name, 4) = &#x27;eto_&#x27; ORDER BY table_name;</p>
+<h2>9. Sources and maintenance</h2>
+<p>Operation mappings: current routes/auth, users, eto-requests, transitions, outputs, comments, attachments, dashboard, price-calculator and admin; authentication/session helpers; workflow state machine; local-user identity mapping; upload/storage and background processing code. Inventory: live Azure information_schema.columns and pg_constraint, read only.</p>
+<p>Keep this reference aligned with deployed code when adding routes, columns, permissions or archive activation. The following appendix records the schema observed for this document; it is not a migration script or a copy of production row data.</p>
+<h2>Activity index</h2>
+<div class='table-wrap'><table><thead><tr><th>No.</th><th>User or system activity</th><th>Tables changed</th></tr></thead><tbody><tr><td>01</td><td>Sign in with Microsoft Entra ID</td><td>crm.eto_users: INSERT / UPDATE<br>crm.eto_sessions: INSERT</td></tr><tr><td>02</td><td>Use an authenticated page or check the signed-in user</td><td>crm.eto_sessions: DELETE (conditional)</td></tr><tr><td>03</td><td>Browse, filter and search ETO requests</td><td>Read only / no business-table writes</td></tr><tr><td>04</td><td>Open dashboard and My Queue</td><td>Read only / no business-table writes</td></tr><tr><td>05</td><td>Open request details and review sections</td><td>Read only / no business-table writes</td></tr><tr><td>06</td><td>Create a draft ETO</td><td>crm.eto_requests: INSERT<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>07</td><td>Edit request details or assignment</td><td>crm.eto_requests: UPDATE<br>crm.eto_detail_changes: INSERT (when fields change)</td></tr><tr><td>08</td><td>Submit draft to ART</td><td>crm.eto_requests: UPDATE<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>09</td><td>ART accepts, returns or declines the initial review</td><td>crm.eto_requests: UPDATE<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>10</td><td>Save Engineering output without completing the stage</td><td>crm.eto_engineering_outputs: INSERT / UPDATE<br>crm.eto_detail_changes: INSERT (changed existing fields)</td></tr><tr><td>11</td><td>Complete Engineering or return to ART</td><td>crm.eto_requests: UPDATE<br>crm.eto_engineering_outputs: INSERT / UPDATE (completion)<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>12</td><td>Save Production output without completing the stage</td><td>crm.eto_production_outputs: INSERT / UPDATE<br>crm.eto_detail_changes: INSERT (changed existing fields)</td></tr><tr><td>13</td><td>Complete Production or return for review</td><td>crm.eto_requests: UPDATE<br>crm.eto_production_outputs: INSERT / UPDATE (completion)<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>14</td><td>Save ART Final output</td><td>crm.eto_art_final_outputs: INSERT / UPDATE<br>crm.eto_detail_changes: INSERT (changed existing fields)</td></tr><tr><td>15</td><td>Issue quote or return from ART Final Review</td><td>crm.eto_requests: UPDATE<br>crm.eto_art_final_outputs: INSERT / UPDATE (quote decision)<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>16</td><td>Mark quoted request Won/Lost or return to ART Final</td><td>crm.eto_requests: UPDATE<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>17</td><td>Abandon a request or reopen an abandoned request</td><td>crm.eto_requests: UPDATE<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>18</td><td>Split a request into related ETOs</td><td>crm.eto_requests: UPDATE + INSERT<br>crm.eto_attachments: INSERT<br>crm.eto_stage_transitions: INSERT</td></tr><tr><td>19</td><td>Read discussion or add a comment</td><td>crm.eto_comments: INSERT (add only)</td></tr><tr><td>20</td><td>Upload a request attachment</td><td>crm.eto_attachments: INSERT</td></tr><tr><td>21</td><td>List, preview or download attachments</td><td>Read only / no business-table writes</td></tr><tr><td>22</td><td>Delete an attachment</td><td>crm.eto_attachments: DELETE</td></tr><tr><td>23</td><td>Read or save request Price Calculator</td><td>crm.eto_price_calculator: INSERT / UPDATE<br>crm.eto_detail_changes: INSERT (changed percentages)</td></tr><tr><td>24</td><td>Set default reviewers</td><td>crm.eto_review_assignment_defaults: INSERT / UPDATE</td></tr><tr><td>25</td><td>Set design formula and read its history</td><td>crm.eto_design_formula_settings: INSERT / UPDATE (changed inputs)<br>crm.eto_design_formula_changes: INSERT (changed inputs)</td></tr><tr><td>26</td><td>Set assembly formula and read its history</td><td>crm.eto_assembly_formula_settings: INSERT / UPDATE (changed inputs)<br>crm.eto_assembly_formula_changes: INSERT (changed inputs)</td></tr><tr><td>27</td><td>Set global Price Calculator defaults</td><td>crm.eto_price_calculator_settings: INSERT / UPDATE</td></tr><tr><td>28</td><td>List users or pre-create a user</td><td>crm.eto_users: INSERT (create)</td></tr><tr><td>29</td><td>Change a user role</td><td>crm.eto_users: UPDATE</td></tr><tr><td>30</td><td>Delete a user</td><td>crm.eto_users: DELETE (only when allowed)</td></tr><tr><td>31</td><td>Simulate a business role</td><td>Read only / no business-table writes</td></tr><tr><td>32</td><td>Read workflow and edit audit history</td><td>Read only / no business-table writes</td></tr><tr><td>33</td><td>Sign out</td><td>crm.eto_sessions: DELETE</td></tr><tr><td>34</td><td>Index or extract searchable attachment text</td><td>crm.eto_attachments: UPDATE</td></tr><tr><td>35</td><td>Send transition emails, reminders or an admin delivery test</td><td>crm.eto_requests: UPDATE (successful reminder only)</td></tr><tr><td>36</td><td>One-time bootstrap, identity/role/submitter imports</td><td>crm.eto_users: UPDATE (applicable import)<br>crm.eto_requests: UPDATE (applicable submitter import)<br>crm.eto_data_imports: INSERT</td></tr><tr><td>37</td><td>Check service and Azure connection health</td><td>Read only / no business-table writes</td></tr></tbody></table></div>
+<h2>Activity details</h2>
+<h3>01. Sign in with Microsoft Entra ID</h3>
+<p>Who: All permitted application users</p>
+<p>Reads: crm.eto_users, crm.eto_sessions</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_users</td><td>INSERT / UPDATE</td><td>clerk_id, name, email, updated_at; role preserved for existing identities</td></tr><tr><td>crm.eto_sessions</td><td>INSERT</td><td>sid, sess, expire</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/login; GET /api/auth/callback</p>
+<p>Behavior: The callback verifies the identity and creates a session. The historical physical column clerk_id stores the current authentication link; it does not mean the app signs in through Clerk. An unlinked pre-created user may be linked by matching email. New users receive the default Sales role. No passwords are stored in these tables.</p>
+<h3>02. Use an authenticated page or check the signed-in user</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_sessions, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_sessions</td><td>DELETE (conditional)</td><td>Expired session only</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/auth/user; GET /api/users/me</p>
+<p>Behavior: Authentication is an implicit dependency of all protected operations below: sessions and users are read for identity/role checks. Expired sessions can be removed during validation. The session helper also supports updates when invoked; browsing does not imply a business-record write.</p>
+<h3>03. Browse, filter and search ETO requests</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_engineering_outputs, crm.eto_production_outputs, crm.eto_art_final_outputs, crm.eto_comments, crm.eto_attachments, crm.eto_stage_transitions, crm.eto_detail_changes</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: GET /api/eto-requests</p>
+<p>Behavior: Simple listing reads requests and user assignments; text search can additionally inspect outputs, discussions, attachments/extracted text, transitions and detail history. Search/filter/sort/pagination do not update request rows. Split-family context is read from eto_requests itself.</p>
+<h3>04. Open dashboard and My Queue</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_requests, crm.eto_stage_transitions, crm.eto_users</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: GET /api/dashboard/metrics; GET /api/dashboard/my-queue</p>
+<p>Behavior: Counts and queue information are calculated from existing rows. There is no dashboard table. No request data is changed merely by opening the dashboard.</p>
+<h3>05. Open request details and review sections</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_engineering_outputs, crm.eto_production_outputs, crm.eto_art_final_outputs, crm.eto_comments, crm.eto_attachments, crm.eto_stage_transitions, crm.eto_detail_changes, crm.eto_price_calculator, crm.eto_price_calculator_settings</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: GET /api/eto-requests/:id; GET /api/eto-requests/:id/engineering-output; GET /api/eto-requests/:id/production-output; GET /api/eto-requests/:id/art-final-output</p>
+<p>Behavior: The detail screen requests related sections separately. Formula/default settings can also be read for calculations. Reading an output/default is not an INSERT; some empty settings tables legitimately use built-in defaults.</p>
+<h3>06. Create a draft ETO</h3>
+<p>Who: Sales or SuperUser</p>
+<p>Reads: crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>INSERT</td><td>customer_name, quote_number, quote_revision, submitted_by_id, stage=draft, eto_number=NULL</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>Creation activity: from_stage=draft, to_stage=draft, actor_id, simulated_role</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests</p>
+<p>Behavior: Request and initial activity are committed in one transaction. The creation activity currently uses decision=submit but remains draft→draft; it is not the real submission to ART. No ETO number is assigned at draft creation.</p>
+<h3>07. Edit request details or assignment</h3>
+<p>Who: ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>Changed request fields, applicable assignment fields, currency/units and updated_at</td></tr><tr><td>crm.eto_detail_changes</td><td>INSERT (when fields change)</td><td>section, changed_by_id, simulated_role, changes JSON</td></tr></tbody></table></div>
+<p>API / trigger: PATCH /api/eto-requests/:id</p>
+<p>Behavior: The existing Request Details form is not editable merely because someone created/owns the request. Budget values, currency and force/displacement units are validated separately. An edit does not itself advance the workflow.</p>
+<h3>08. Submit draft to ART</h3>
+<p>Who: Sales, ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>stage, first assigned eto_number, assignment/workflow fields, updated_at</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>from_stage, to_stage, decision=submit, actor_id, reason</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: A successful first submission assigns the annual ETO number under the allocator lock and enters art-review. Existing assigned numbers remain unchanged on later returns/resubmissions. A serial numeric request id is different from the displayed ETO number.</p>
+<h3>09. ART accepts, returns or declines the initial review</h3>
+<p>Who: ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_review_assignment_defaults</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>stage, assignee_id, production_assignee_id, review flags/durations, acceptance date, due date, reason as applicable</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>Decision, previous/new stage, actor and selected review flags</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: approve-engineering routes to Engineering if included, otherwise Production if included, otherwise ART Final Review. return-draft routes back to Draft; decline ends as Declined. The first ART acceptance starts the due-date schedule; returns do not reset it. Reviewer defaults apply on stage entry while established assignments/sticky reviewers are preserved.</p>
+<h3>10. Save Engineering output without completing the stage</h3>
+<p>Who: Engineering, ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_engineering_outputs, crm.eto_design_formula_settings</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_engineering_outputs</td><td>INSERT / UPDATE</td><td>estimated_design_hours, derived design estimates and formula snapshot, risk_score/risk_notes, guidance and notes</td></tr><tr><td>crm.eto_detail_changes</td><td>INSERT (changed existing fields)</td><td>Engineering edit history</td></tr></tbody></table></div>
+<p>API / trigger: PUT /api/eto-requests/:id/engineering-output</p>
+<p>Behavior: One output row is retained per request (unique eto_request_id). Saving output does not itself create a stage transition. Risk score is required for saves; High risk needs its explanation. Current estimated design hours do not erase legacy estimate fields. First output creation may have no field-change history entry; edits of existing output record actual differences.</p>
+<h3>11. Complete Engineering or return to ART</h3>
+<p>Who: Engineering or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_engineering_outputs, crm.eto_design_formula_settings, crm.eto_review_assignment_defaults</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>Next stage, assignment and updated_at</td></tr><tr><td>crm.eto_engineering_outputs</td><td>INSERT / UPDATE (completion)</td><td>Submitted Engineering values, risk and calculated snapshot</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>engineering-quote-ready or engineering-return-art</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: Completion goes to Production if that review is included, otherwise ART Final Review. Return goes to ART Review. Completion outputs and transition/request state are written in the transition transaction.</p>
+<h3>12. Save Production output without completing the stage</h3>
+<p>Who: Production, ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_production_outputs, crm.eto_assembly_formula_settings</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_production_outputs</td><td>INSERT / UPDATE</td><td>procurement_cost/currency, procurement_lead_time, assembly_time_hours, derived assembly estimates, formula snapshot, risk and notes</td></tr><tr><td>crm.eto_detail_changes</td><td>INSERT (changed existing fields)</td><td>Production edit history</td></tr></tbody></table></div>
+<p>API / trigger: PUT /api/eto-requests/:id/production-output</p>
+<p>Behavior: One output per request. Procurement and assembly estimates use their dedicated fields/units; historic week-based estimates are retained. Risk score is required and High risk needs an explanation. Saving does not advance the stage.</p>
+<h3>13. Complete Production or return for review</h3>
+<p>Who: Production or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_production_outputs, crm.eto_assembly_formula_settings, crm.eto_review_assignment_defaults</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>Next stage, assignments and updated_at</td></tr><tr><td>crm.eto_production_outputs</td><td>INSERT / UPDATE (completion)</td><td>Submitted procurement/assembly values, risk and calculation snapshot</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>production-approve or production-return-engineering</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: Production approval enters ART Final Review. Return goes to Engineering when included, otherwise ART Review. Transition validation determines whether the action is legal from the current stage.</p>
+<h3>14. Save ART Final output</h3>
+<p>Who: ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_art_final_outputs</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_art_final_outputs</td><td>INSERT / UPDATE</td><td>market_price, market_price_currency, market_leadtime, notes, updated_at</td></tr><tr><td>crm.eto_detail_changes</td><td>INSERT (changed existing fields)</td><td>ART Final edit history</td></tr></tbody></table></div>
+<p>API / trigger: PUT /api/eto-requests/:id/art-final-output</p>
+<p>Behavior: A saved ART Final output is separate from issuing the quote. Monetary values are whole-number amounts with a separate currency code.</p>
+<h3>15. Issue quote or return from ART Final Review</h3>
+<p>Who: ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_art_final_outputs</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>stage and workflow/assignment fields</td></tr><tr><td>crm.eto_art_final_outputs</td><td>INSERT / UPDATE (quote decision)</td><td>Final market price/currency, lead time and notes</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>art-final-quote or an allowed return/decline decision</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: art-final-quote moves to Quoted. Return paths depend on which reviews were included. Decline is also available from ART Final Review. Issuing a quote is a business-state change, not a deletion.</p>
+<h3>16. Mark quoted request Won/Lost or return to ART Final</h3>
+<p>Who: Sales, ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>stage, related outcome/reason fields and updated_at</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>mark-won, mark-lost or quoted-return-art-final</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: Terminal Won/Lost records retain their outputs, attachments and audit trails. They are not physically deleted by these buttons.</p>
+<h3>17. Abandon a request or reopen an abandoned request</h3>
+<p>Who: ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_stage_transitions, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE</td><td>stage, abandon/restore workflow state, assignment and updated_at</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>mark-abandoned or reopen</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/transitions</p>
+<p>Behavior: These controls obey the state machine. Reopen is available from Abandoned, not as a universal reopen of Won/Lost/Declined. History is retained; no child records are deleted.</p>
+<h3>18. Split a request into related ETOs</h3>
+<p>Who: ART or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_attachments</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE + INSERT</td><td>Parent has_split_children=true; child rows, parent_eto_request_id, split_sequence and child ETO references</td></tr><tr><td>crm.eto_attachments</td><td>INSERT</td><td>Copied-file metadata linked to each child</td></tr><tr><td>crm.eto_stage_transitions</td><td>INSERT</td><td>Split parent/child activity</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/eto-requests/:id/split</p>
+<p>Behavior: Splitting is limited to eligible ART Review requests and cannot repeat an existing split. Current child references append a padded numeric suffix, e.g. parent-number-01. File objects are copied by the storage service and metadata is inserted; these are not file bytes inside PostgreSQL. Failed-copy cleanup is separate from database rollback.</p>
+<h3>19. Read discussion or add a comment</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_requests, crm.eto_comments, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_comments</td><td>INSERT (add only)</td><td>eto_request_id, author_id, body, simulated_role, created_at</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/eto-requests/:id/comments; POST /api/eto-requests/:id/comments</p>
+<p>Behavior: A comment adds a row and does not update workflow stage. No comment edit/delete endpoint is currently provided. Author attribution is linked to the authenticated user, including during role simulation.</p>
+<h3>20. Upload a request attachment</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_requests, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_attachments</td><td>INSERT</td><td>eto_request_id, uploader_id, filename, storage_key, content_type, file_size</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/storage/uploads/request-url; POST /api/eto-requests/:id/attachments</p>
+<p>Behavior: Upload URL issuance uses temporary server-side pending-upload state and object storage. The attachment registration endpoint verifies that the storage key belongs to that user/request before inserting metadata. Signing a URL is not an attachment INSERT. File bytes stay in object storage.</p>
+<h3>21. List, preview or download attachments</h3>
+<p>Who: Signed-in users; validated signed preview access where supported</p>
+<p>Reads: crm.eto_requests, crm.eto_attachments, crm.eto_users</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: GET /api/eto-requests/:id/attachments; GET /api/eto-requests/:id/attachments/:attachmentId/download; GET /api/eto-requests/:id/attachments/:attachmentId/preview-link; GET /api/eto-requests/:id/attachments/:attachmentId/preview</p>
+<p>Behavior: The table supplies metadata and storage references; the storage service supplies/streams bytes. A signed preview is an access check, not a new database file record. Opening/downloading a file does not delete or replace it.</p>
+<h3>22. Delete an attachment</h3>
+<p>Who: Its uploader, Admin or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_attachments, crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_attachments</td><td>DELETE</td><td>The selected metadata row</td></tr></tbody></table></div>
+<p>API / trigger: DELETE /api/eto-requests/:id/attachments/:attachmentId</p>
+<p>Behavior: Metadata is unlinked first. The object is deleted only if no other attachment row references the same storage_key. Another active or archived reference must keep the blob available. Object-storage deletion and PostgreSQL deletion are distinct operations; storage errors can occur after metadata removal.</p>
+<h3>23. Read or save request Price Calculator</h3>
+<p>Who: Read: signed-in users. Save: ART or SuperUser during ART Final Review</p>
+<p>Reads: crm.eto_requests, crm.eto_engineering_outputs, crm.eto_production_outputs, crm.eto_art_final_outputs, crm.eto_price_calculator, crm.eto_price_calculator_settings</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_price_calculator</td><td>INSERT / UPDATE</td><td>eto_request_id, contingency_percent, margin_percent, updated_at</td></tr><tr><td>crm.eto_detail_changes</td><td>INSERT (changed percentages)</td><td>ART Final calculator field changes</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/eto-requests/:id/price-calculator; PUT /api/eto-requests/:id/price-calculator</p>
+<p>Behavior: The request-specific row uses eto_request_id as both primary key and request FK. Percentages are independently stored; calculations shown in the browser do not persist every intermediate total. If no row exists, the app reads global defaults, then built-in defaults. Values must be 0–100. Money is rounded to whole units and mixed currencies are not silently converted.</p>
+<h3>24. Set default reviewers</h3>
+<p>Who: Admin or SuperUser</p>
+<p>Reads: crm.eto_users, crm.eto_review_assignment_defaults</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_review_assignment_defaults</td><td>INSERT / UPDATE</td><td>id=1, engineering_user_id, production_user_id, updated_at</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/users/review-defaults; PUT /api/users/review-defaults</p>
+<p>Behavior: The selected accounts must have Engineering and Production roles respectively. Defaults influence future stage-entry assignment; changing them does not silently rewrite all existing request assignments.</p>
+<h3>25. Set design formula and read its history</h3>
+<p>Who: Admin or SuperUser</p>
+<p>Reads: crm.eto_design_formula_settings, crm.eto_design_formula_changes</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_design_formula_settings</td><td>INSERT / UPDATE (changed inputs)</td><td>id=1, hourly_rate, hours_per_week, capacity_factor, updated_at</td></tr><tr><td>crm.eto_design_formula_changes</td><td>INSERT (changed inputs)</td><td>actor_user_id/name/email, previous/new inputs, changed_at</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/admin/design-formula; PUT /api/admin/design-formula; GET /api/admin/design-formula/history</p>
+<p>Behavior: Actual changes save current inputs and one history record transactionally. Identical saves create no extra history. Request outputs store their own calculation snapshots; changing the global formula does not automatically rewrite every historical Engineering output.</p>
+<h3>26. Set assembly formula and read its history</h3>
+<p>Who: Admin or SuperUser</p>
+<p>Reads: crm.eto_assembly_formula_settings, crm.eto_assembly_formula_changes</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_assembly_formula_settings</td><td>INSERT / UPDATE (changed inputs)</td><td>id=1, hourly_rate, hours_per_week, capacity_factor, updated_at</td></tr><tr><td>crm.eto_assembly_formula_changes</td><td>INSERT (changed inputs)</td><td>actor snapshots, previous/new inputs, changed_at</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/admin/assembly-formula; PUT /api/admin/assembly-formula; GET /api/admin/assembly-formula/history</p>
+<p>Behavior: Same current-setting plus history pattern as the design formula. Identical saves create no duplicate history. Formula-history actor_user_id fields are logical references to users, not physical foreign-key constraints in the current schema.</p>
+<h3>27. Set global Price Calculator defaults</h3>
+<p>Who: Admin or SuperUser</p>
+<p>Reads: crm.eto_price_calculator_settings</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_price_calculator_settings</td><td>INSERT / UPDATE</td><td>id=1, contingency_percent, margin_percent, updated_at</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/admin/price-calculator; PUT /api/admin/price-calculator</p>
+<p>Behavior: Changes affect requests that have no saved request-specific percentages. They do not overwrite existing eto_price_calculator rows. There is no separate global price-default history table among the 18 tables.</p>
+<h3>28. List users or pre-create a user</h3>
+<p>Who: List: signed-in users. Create: Admin or SuperUser</p>
+<p>Reads: crm.eto_users</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_users</td><td>INSERT (create)</td><td>name, email, role; auth link initially unclaimed</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/users; POST /api/users</p>
+<p>Behavior: Admin &gt; Users provides user management. A pre-created account can be linked at first Entra sign-in without discarding its assigned role. The operation creates an app user, not a Microsoft Entra directory account.</p>
+<h3>29. Change a user role</h3>
+<p>Who: Admin/SuperUser, with restricted first-user bootstrap logic</p>
+<p>Reads: crm.eto_users, crm.eto_review_assignment_defaults</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_users</td><td>UPDATE</td><td>role and updated_at</td></tr></tbody></table></div>
+<p>API / trigger: PATCH /api/users/:id/role</p>
+<p>Behavior: The role-change handler locks the relevant user set and protects against self-lockout and demoting the last privileged account. A default reviewer cannot be changed to an incompatible role without resolving the default. Changing an application role does not alter the Microsoft Entra directory account.</p>
+<h3>30. Delete a user</h3>
+<p>Who: Admin or SuperUser</p>
+<p>Reads: crm.eto_users, crm.eto_review_assignment_defaults</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_users</td><td>DELETE (only when allowed)</td><td>Selected user row</td></tr></tbody></table></div>
+<p>API / trigger: DELETE /api/users/:id</p>
+<p>Behavior: Self-delete, removal of the last privileged account and removal of configured default reviewers are blocked. Existing request/history/comment/file FK references may also block deletion with RESTRICT. This is not a cascade delete of that user’s ETO requests.</p>
+<h3>31. Simulate a business role</h3>
+<p>Who: Actual SuperUser</p>
+<p>Reads: crm.eto_users</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: Role selector and x-eto-simulated-role on protected requests</p>
+<p>Behavior: Simulation changes effective permissions, not the stored user role or identity. It does not UPDATE eto_users. Actions taken while simulating still make their normal business writes and capture simulated_role in the applicable audit/activity records.</p>
+<h3>32. Read workflow and edit audit history</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_stage_transitions, crm.eto_detail_changes, crm.eto_users</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: GET /api/eto-requests/:id/transitions; GET /api/eto-requests/:id/detail-changes</p>
+<p>Behavior: History pages read existing events/field differences. There is no user-facing edit/delete history action. stage_transitions records stage decisions; detail_changes records field edits. They are not interchangeable.</p>
+<h3>33. Sign out</h3>
+<p>Who: Signed-in users</p>
+<p>Reads: crm.eto_sessions</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_sessions</td><td>DELETE</td><td>Current session</td></tr></tbody></table></div>
+<p>API / trigger: GET /api/logout; POST /api/mobile-auth/logout</p>
+<p>Behavior: The browser cookie is cleared; web logout also uses the Entra end-session redirect. Sign-out does not delete the user account or any ETO data.</p>
+<h3>34. Index or extract searchable attachment text</h3>
+<p>Who: Background/server job, not a separate user form</p>
+<p>Reads: crm.eto_attachments</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_attachments</td><td>UPDATE</td><td>search_text, search_status, search_error, search_attempts, search_indexed_at where applicable</td></tr></tbody></table></div>
+<p>API / trigger: Attachment indexing worker / indexAttachments script</p>
+<p>Behavior: The server retrieves file bytes, extracts text/OCR where supported and stores searchable text/state in the metadata row. No separate OCR table is part of the current 18-table design. A successful file upload and successful text indexing are distinct outcomes.</p>
+<h3>35. Send transition emails, reminders or an admin delivery test</h3>
+<p>Who: Transition handler/background job; delivery test: Admin or SuperUser</p>
+<p>Reads: crm.eto_requests, crm.eto_users, crm.eto_stage_transitions</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_requests</td><td>UPDATE (successful reminder only)</td><td>last_reminded_at</td></tr></tbody></table></div>
+<p>API / trigger: Transition notifications; Reminder script; POST /api/admin/email/test</p>
+<p>Behavior: Transition emails are sent after the main workflow transaction. Reminder scheduling requires the job to run and the email provider to be configured; it is not guaranteed merely by publishing. A failed notification does not roll back an already committed transition. No delivery-log table currently exists. The admin delivery-test API does not itself write an ETO table.</p>
+<h3>36. One-time bootstrap, identity/role/submitter imports</h3>
+<p>Who: Controlled startup/admin tooling</p>
+<p>Reads: crm.eto_users, crm.eto_requests, crm.eto_data_imports</p>
+<div class='table-wrap'><table><thead><tr><th>Table</th><th>Operation</th><th>Principal columns / effect</th></tr></thead><tbody><tr><td>crm.eto_users</td><td>UPDATE (applicable import)</td><td>Verified role/identity records</td></tr><tr><td>crm.eto_requests</td><td>UPDATE (applicable submitter import)</td><td>submitted_by_id</td></tr><tr><td>crm.eto_data_imports</td><td>INSERT</td><td>id marker, matched_users, applied_at</td></tr></tbody></table></div>
+<p>API / trigger: POST /api/users/sync; POST /api/users/bootstrap-admin; Startup one-time import helpers</p>
+<p>Behavior: These are not ordinary CRUD forms run on every click. Markers prevent repeated one-time jobs. Preserve verified identities and roles. Do not manually rerun bootstrap/imports as a normal production troubleshooting step.</p>
+<h3>37. Check service and Azure connection health</h3>
+<p>Who: Operational health check</p>
+<p>Reads: Connection metadata or no app-table read for this specific step.</p>
+<p>Writes: none for this business activity (normal authentication/expired-session handling still applies).</p>
+<p>API / trigger: GET /api/healthz; GET /api/healthz/azure-crm</p>
+<p>Behavior: Azure health queries connection metadata; startup also verifies the target database and CRUD privileges on all app tables. Health checks do not create/rename tables or expose credentials.</p>
+<h2>Table directory</h2>
+<div class='table-wrap'><table><thead><tr><th>Azure table</th><th>Columns</th><th>Purpose</th></tr></thead><tbody><tr><td>crm.eto_art_final_outputs</td><td>8</td><td>Final market price, currency, lead time and ART notes.</td></tr><tr><td>crm.eto_assembly_formula_changes</td><td>11</td><td>Assembly-formula change history with actor snapshots and previous/new inputs.</td></tr><tr><td>crm.eto_assembly_formula_settings</td><td>5</td><td>Current assembly hourly rate, hours/week and capacity factor.</td></tr><tr><td>crm.eto_attachments</td><td>14</td><td>File metadata, storage reference, uploader and extraction/search state. Not the file bytes.</td></tr><tr><td>crm.eto_comments</td><td>6</td><td>Discussion messages and author attribution.</td></tr><tr><td>crm.eto_data_imports</td><td>3</td><td>One-time initialization/import markers and matched-user counts.</td></tr><tr><td>crm.eto_design_formula_changes</td><td>11</td><td>Design-formula change history with actor snapshots and previous/new inputs.</td></tr><tr><td>crm.eto_design_formula_settings</td><td>5</td><td>Current design hourly rate, hours/week and capacity factor.</td></tr><tr><td>crm.eto_detail_changes</td><td>7</td><td>Field-level audit records for request details, review output edits and calculator changes.</td></tr><tr><td>crm.eto_engineering_outputs</td><td>17</td><td>Engineering estimates, saved design-formula inputs, design hours, risk and notes.</td></tr><tr><td>crm.eto_price_calculator</td><td>4</td><td>Per-request contingency and margin percentages.</td></tr><tr><td>crm.eto_price_calculator_settings</td><td>4</td><td>Global default contingency and margin percentages.</td></tr><tr><td>crm.eto_production_outputs</td><td>19</td><td>Procurement/assembly estimates, saved assembly-formula inputs, risk and notes.</td></tr><tr><td>crm.eto_requests</td><td>42</td><td>Core request, current stage, assignments, numbering, split family, review selections, durations and due date.</td></tr><tr><td>crm.eto_review_assignment_defaults</td><td>4</td><td>Default Engineering and Production reviewers.</td></tr><tr><td>crm.eto_sessions</td><td>3</td><td>Server-side sign-in sessions and expiry.</td></tr><tr><td>crm.eto_stage_transitions</td><td>11</td><td>Append-only workflow activity: actor, decision, previous/new stage and reason.</td></tr><tr><td>crm.eto_users</td><td>7</td><td>User identity, email, application role and Microsoft Entra account link.</td></tr></tbody></table></div>
+<h2>Schema appendix — verified Azure structures</h2>
+<p>All tables below belong to database d365crm, schema crm. Required means PostgreSQL NOT NULL, not the full set of application/form requirements. SQL defaults do not mean that a table already contains a settings row. Sequence defaults generate numeric IDs; displayed ETO references use separate allocation logic. FK definitions are schema-qualified below for readability.</p>
+<h3>crm.eto_art_final_outputs</h3>
+<p>Final market price, currency, lead time and ART notes.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>market_price</td><td>text</td><td>No</td><td>None</td></tr><tr><td>market_leadtime</td><td>text</td><td>No</td><td>None</td></tr><tr><td>notes</td><td>text</td><td>No</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>market_price_currency</td><td>text</td><td>Yes</td><td>&#x27;USD&#x27;::text</td></tr></tbody></table></div>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (id)</p>
+<p>UNIQUE (eto_request_id)</p>
+<h3>crm.eto_assembly_formula_changes</h3>
+<p>Assembly-formula change history with actor snapshots and previous/new inputs.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>actor_user_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>actor_name</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>actor_email</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>changed_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>previous_hourly_rate</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>previous_hours_per_week</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>previous_capacity_factor</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>new_hourly_rate</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>new_hours_per_week</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>new_capacity_factor</td><td>text</td><td>Yes</td><td>None</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<p>Logical relationship: actor_user_id identifies crm.eto_users.id, but no physical user foreign-key constraint exists on this history table. Actor name/email snapshots are stored.</p>
+<h3>crm.eto_assembly_formula_settings</h3>
+<p>Current assembly hourly rate, hours/week and capacity factor.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>hourly_rate</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>hours_per_week</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>capacity_factor</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_attachments</h3>
+<p>File metadata, storage reference, uploader and extraction/search state. Not the file bytes.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>uploader_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>filename</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>storage_key</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>content_type</td><td>text</td><td>No</td><td>None</td></tr><tr><td>file_size</td><td>bigint</td><td>No</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>search_text</td><td>text</td><td>No</td><td>None</td></tr><tr><td>search_status</td><td>text</td><td>Yes</td><td>&#x27;pending&#x27;::text</td></tr><tr><td>search_error</td><td>text</td><td>No</td><td>None</td></tr><tr><td>search_attempts</td><td>integer</td><td>Yes</td><td>0</td></tr><tr><td>search_processed_at</td><td>timestamp with time zone</td><td>No</td><td>None</td></tr><tr><td>search_lease_token</td><td>text</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (uploader_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_comments</h3>
+<p>Discussion messages and author attribution.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>author_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>body</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>simulated_role</td><td>text</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>FOREIGN KEY (author_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_data_imports</h3>
+<p>One-time initialization/import markers and matched-user counts.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>matched_users</td><td>integer</td><td>Yes</td><td>0</td></tr><tr><td>applied_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_design_formula_changes</h3>
+<p>Design-formula change history with actor snapshots and previous/new inputs.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>actor_user_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>actor_name</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>actor_email</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>changed_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>previous_hourly_rate</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>previous_hours_per_week</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>previous_capacity_factor</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>new_hourly_rate</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>new_hours_per_week</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>new_capacity_factor</td><td>text</td><td>Yes</td><td>None</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<p>Logical relationship: actor_user_id identifies crm.eto_users.id, but no physical user foreign-key constraint exists on this history table. Actor name/email snapshots are stored.</p>
+<h3>crm.eto_design_formula_settings</h3>
+<p>Current design hourly rate, hours/week and capacity factor.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>hourly_rate</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>hours_per_week</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>capacity_factor</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_detail_changes</h3>
+<p>Field-level audit records for request details, review output edits and calculator changes.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>section</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>changed_by_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>changed_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>changes</td><td>jsonb</td><td>Yes</td><td>None</td></tr><tr><td>simulated_role</td><td>text</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (changed_by_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_engineering_outputs</h3>
+<p>Engineering estimates, saved design-formula inputs, design hours, risk and notes.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>cost_estimate</td><td>text</td><td>No</td><td>None</td></tr><tr><td>doc_leadtime</td><td>text</td><td>No</td><td>None</td></tr><tr><td>pn_guidance</td><td>text</td><td>No</td><td>None</td></tr><tr><td>notes</td><td>text</td><td>No</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>cost_estimate_currency</td><td>text</td><td>Yes</td><td>&#x27;USD&#x27;::text</td></tr><tr><td>estimated_design_hours</td><td>text</td><td>No</td><td>None</td></tr><tr><td>design_cost</td><td>text</td><td>No</td><td>None</td></tr><tr><td>design_lead_time_weeks</td><td>text</td><td>No</td><td>None</td></tr><tr><td>design_hourly_rate</td><td>text</td><td>No</td><td>None</td></tr><tr><td>design_hours_per_week</td><td>text</td><td>No</td><td>None</td></tr><tr><td>design_capacity_factor</td><td>text</td><td>No</td><td>None</td></tr><tr><td>risk_score</td><td>text</td><td>No</td><td>None</td></tr><tr><td>risk_notes</td><td>text</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (id)</p>
+<p>UNIQUE (eto_request_id)</p>
+<h3>crm.eto_price_calculator</h3>
+<p>Per-request contingency and margin percentages.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>contingency_percent</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>margin_percent</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (eto_request_id)</p>
+<h3>crm.eto_price_calculator_settings</h3>
+<p>Global default contingency and margin percentages.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>contingency_percent</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>margin_percent</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_production_outputs</h3>
+<p>Procurement/assembly estimates, saved assembly-formula inputs, risk and notes.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>mfg_leadtime</td><td>text</td><td>No</td><td>None</td></tr><tr><td>prod_leadtime</td><td>text</td><td>No</td><td>None</td></tr><tr><td>notes</td><td>text</td><td>No</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>procurement_cost</td><td>text</td><td>No</td><td>None</td></tr><tr><td>procurement_cost_currency</td><td>text</td><td>Yes</td><td>&#x27;USD&#x27;::text</td></tr><tr><td>procurement_lead_time</td><td>text</td><td>No</td><td>None</td></tr><tr><td>assembly_time_hours</td><td>text</td><td>No</td><td>None</td></tr><tr><td>assembly_cost</td><td>text</td><td>No</td><td>None</td></tr><tr><td>assembly_cost_currency</td><td>text</td><td>Yes</td><td>&#x27;USD&#x27;::text</td></tr><tr><td>assembly_lead_time_weeks</td><td>text</td><td>No</td><td>None</td></tr><tr><td>assembly_hourly_rate</td><td>text</td><td>No</td><td>None</td></tr><tr><td>assembly_hours_per_week</td><td>text</td><td>No</td><td>None</td></tr><tr><td>assembly_capacity_factor</td><td>text</td><td>No</td><td>None</td></tr><tr><td>risk_score</td><td>text</td><td>No</td><td>None</td></tr><tr><td>risk_notes</td><td>text</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (id)</p>
+<p>UNIQUE (eto_request_id)</p>
+<h3>crm.eto_requests</h3>
+<p>Core request, current stage, assignments, numbering, split family, review selections, durations and due date.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_number</td><td>text</td><td>No</td><td>None</td></tr><tr><td>customer_name</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>quote_number</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>quote_revision</td><td>text</td><td>Yes</td><td>&#x27;&#x27;::text</td></tr><tr><td>test_type</td><td>text</td><td>Yes</td><td>&#x27;&#x27;::text</td></tr><tr><td>materials</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>specimen_dimensions</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>relevant_standards</td><td>text</td><td>No</td><td>None</td></tr><tr><td>customer_components</td><td>text</td><td>No</td><td>None</td></tr><tr><td>custom_details</td><td>text</td><td>No</td><td>None</td></tr><tr><td>stage</td><td>text</td><td>Yes</td><td>&#x27;draft&#x27;::text</td></tr><tr><td>assignee_id</td><td>integer</td><td>No</td><td>None</td></tr><tr><td>sticky_engineer_user_id</td><td>integer</td><td>No</td><td>None</td></tr><tr><td>submitted_by_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>decline_reason</td><td>text</td><td>No</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>last_reminded_at</td><td>timestamp with time zone</td><td>No</td><td>None</td></tr><tr><td>distributor</td><td>text</td><td>No</td><td>None</td></tr><tr><td>request_type</td><td>text</td><td>No</td><td>None</td></tr><tr><td>machine_type</td><td>text</td><td>No</td><td>None</td></tr><tr><td>expected_force_range</td><td>text</td><td>No</td><td>None</td></tr><tr><td>expected_displacement</td><td>text</td><td>No</td><td>None</td></tr><tr><td>results_required</td><td>text</td><td>No</td><td>None</td></tr><tr><td>budget_range</td><td>text</td><td>No</td><td>None</td></tr><tr><td>acceptable_lead_time</td><td>text</td><td>No</td><td>None</td></tr><tr><td>similar_parts</td><td>text</td><td>No</td><td>None</td></tr><tr><td>budget_currency</td><td>text</td><td>Yes</td><td>&#x27;USD&#x27;::text</td></tr><tr><td>parent_eto_request_id</td><td>integer</td><td>No</td><td>None</td></tr><tr><td>split_sequence</td><td>integer</td><td>No</td><td>None</td></tr><tr><td>has_split_children</td><td>boolean</td><td>Yes</td><td>false</td></tr><tr><td>expected_force_unit</td><td>text</td><td>Yes</td><td>&#x27;N&#x27;::text</td></tr><tr><td>expected_displacement_unit</td><td>text</td><td>Yes</td><td>&#x27;mm&#x27;::text</td></tr><tr><td>include_engineering_review</td><td>boolean</td><td>Yes</td><td>true</td></tr><tr><td>include_production_review</td><td>boolean</td><td>Yes</td><td>true</td></tr><tr><td>production_assignee_id</td><td>integer</td><td>No</td><td>None</td></tr><tr><td>engineering_review_duration_weeks</td><td>double precision</td><td>No</td><td>None</td></tr><tr><td>production_review_duration_weeks</td><td>double precision</td><td>No</td><td>None</td></tr><tr><td>art_final_review_duration_weeks</td><td>double precision</td><td>No</td><td>None</td></tr><tr><td>art_review_accepted_date</td><td>date</td><td>No</td><td>None</td></tr><tr><td>due_date</td><td>date</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (parent_eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE RESTRICT</p>
+<p>FOREIGN KEY (submitted_by_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>FOREIGN KEY (sticky_engineer_user_id) REFERENCES crm.eto_users(id) ON DELETE SET NULL</p>
+<p>FOREIGN KEY (production_assignee_id) REFERENCES crm.eto_users(id) ON DELETE SET NULL</p>
+<p>FOREIGN KEY (assignee_id) REFERENCES crm.eto_users(id) ON DELETE SET NULL</p>
+<p>PRIMARY KEY (id)</p>
+<p>UNIQUE (eto_number)</p>
+<p>Workflow stage and role/decision rules are enforced by the application. Split-family uniqueness also uses an index; this appendix lists column definitions and SQL constraints, not every performance index.</p>
+<h3>crm.eto_review_assignment_defaults</h3>
+<p>Default Engineering and Production reviewers.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>engineering_user_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>production_user_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>FOREIGN KEY (engineering_user_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>FOREIGN KEY (production_user_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_sessions</h3>
+<p>Server-side sign-in sessions and expiry.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>sid</td><td>character varying</td><td>Yes</td><td>None</td></tr><tr><td>sess</td><td>jsonb</td><td>Yes</td><td>None</td></tr><tr><td>expire</td><td>timestamp without time zone</td><td>Yes</td><td>None</td></tr></tbody></table></div>
+<p>PRIMARY KEY (sid)</p>
+<h3>crm.eto_stage_transitions</h3>
+<p>Append-only workflow activity: actor, decision, previous/new stage and reason.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>eto_request_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>actor_id</td><td>integer</td><td>Yes</td><td>None</td></tr><tr><td>from_stage</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>to_stage</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>decision</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>reason</td><td>text</td><td>No</td><td>None</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>simulated_role</td><td>text</td><td>No</td><td>None</td></tr><tr><td>include_engineering_review</td><td>boolean</td><td>No</td><td>None</td></tr><tr><td>include_production_review</td><td>boolean</td><td>No</td><td>None</td></tr></tbody></table></div>
+<p>FOREIGN KEY (actor_id) REFERENCES crm.eto_users(id) ON DELETE RESTRICT</p>
+<p>FOREIGN KEY (eto_request_id) REFERENCES crm.eto_requests(id) ON DELETE CASCADE</p>
+<p>PRIMARY KEY (id)</p>
+<h3>crm.eto_users</h3>
+<p>User identity, email, application role and Microsoft Entra account link.</p>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>PostgreSQL type</th><th>NOT NULL</th><th>Default</th></tr></thead><tbody><tr><td>id</td><td>integer</td><td>Yes</td><td>Auto-generated sequence</td></tr><tr><td>clerk_id</td><td>text</td><td>No</td><td>None</td></tr><tr><td>name</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>email</td><td>text</td><td>Yes</td><td>None</td></tr><tr><td>role</td><td>text</td><td>Yes</td><td>&#x27;sales&#x27;::text</td></tr><tr><td>created_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr><tr><td>updated_at</td><td>timestamp with time zone</td><td>Yes</td><td>now()</td></tr></tbody></table></div>
+<p>PRIMARY KEY (id)</p>
+<p>UNIQUE (clerk_id)</p>
+<h2>Document verification</h2>
+<p>Inventory cross-check: 18 tables, 181 columns, 19 physical FKs and 42 SQL constraints. The 37 activities were mapped from current route/workflow/UI code. This document does not claim that all production write journeys were exercised during preparation.</p></main></body></html>

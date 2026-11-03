@@ -1,0 +1,2383 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: ETO Tracker API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: Auth
+    description: Browser authentication endpoints
+  - name: health
+    description: Health operations
+  - name: users
+    description: User management
+  - name: eto-requests
+    description: ETO request management
+  - name: dashboard
+    description: Dashboard metrics
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+
+paths:
+  /admin/email-notifications:
+    put:
+      operationId: updateAllEmailNotifications
+      tags: [admin]
+      summary: Enable or disable all email notifications atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailNotificationInput"
+      responses:
+        "200":
+          description: All notification switches saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailNotificationInput"
+        "400":
+          description: Invalid boolean
+        "403":
+          description: Admin access required
+    get:
+      operationId: getEmailNotifications
+      tags: [admin]
+      summary: Get email notification toggles and delivery readiness
+      responses:
+        "200":
+          description: Email notification settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailNotifications"
+        "403":
+          description: Admin access required
+  /admin/email-notifications/{notificationType}:
+    put:
+      operationId: updateEmailNotification
+      tags: [admin]
+      summary: Enable or disable one email notification
+      parameters:
+        - name: notificationType
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailNotificationInput"
+      responses:
+        "200":
+          description: Saved notification switch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailNotificationInput"
+        "400":
+          description: Unknown notification or invalid boolean
+        "403":
+          description: Admin access required
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      tags: [Auth]
+      summary: Get the current authentication state
+      responses:
+        "200":
+          description: Current authentication state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+
+  /login:
+    get:
+      operationId: beginBrowserLogin
+      tags: [Auth]
+      summary: Begin browser login
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the identity provider
+
+  /auth/callback:
+    get:
+      operationId: handleBrowserLoginCallback
+      tags: [Auth]
+      summary: Complete browser login
+      responses:
+        "302":
+          description: Redirect after login
+
+  /logout:
+    get:
+      operationId: logoutBrowserSession
+      tags: [Auth]
+      summary: Log out the current browser session
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect after logout
+
+  # ─── Users ───────────────────────────────────────────────────────────────────
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Unauthorized
+
+  /users/review-defaults:
+    get:
+      operationId: getReviewAssignmentDefaults
+      tags: [users]
+      summary: Get default Engineering and Production reviewers
+      parameters:
+        - name: entity
+          in: query
+          schema:
+            type: string
+            enum: [TOUS, TOUK]
+            default: TOUS
+      responses:
+        "200":
+          description: Current reviewer defaults (null until configured)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAssignmentDefaults"
+    put:
+      operationId: updateReviewAssignmentDefaults
+      tags: [users]
+      summary: Set default Engineering and Production reviewers (Admin, SuperUser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewAssignmentDefaultsInput"
+      responses:
+        "200":
+          description: Updated defaults
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAssignmentDefaults"
+        "400":
+          description: Invalid user IDs or roles
+        "403":
+          description: Admin access required
+
+  /users/sync:
+    post:
+      operationId: syncUser
+      tags: [users]
+      summary: Create or update user record from the authenticated session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSyncInput"
+      responses:
+        "200":
+          description: Upserted user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}/role:
+    patch:
+      operationId: updateUserRole
+      tags: [users]
+      summary: Update a user's role (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRoleInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid role
+        "403":
+          description: Admin access required
+        "404":
+          description: User not found
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users, optionally filtered by role
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Admin — pre-create a user record before they first sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateInput"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "409":
+          description: Email already exists
+
+  /users/{id}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Admin — delete a user record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+
+  # ─── ETO Requests ─────────────────────────────────────────────────────────────
+
+  /eto-requests:
+    get:
+      operationId: listEtoRequests
+      tags: [eto-requests]
+      summary: List ETO requests with search and filter
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: stage
+          in: query
+          schema:
+            type: string
+        - name: assigneeId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: overdue
+          in: query
+          description: "When true, return only overdue requests"
+          schema:
+            type: boolean
+        - name: splitFamilyId
+          in: query
+          description: "When set, return the original split request and all of its child ETOs"
+          schema:
+            type: integer
+        - name: splitOnly
+          in: query
+          description: "When true, return only requests that belong to a split family"
+          schema:
+            type: boolean
+        - name: archive
+          in: query
+          description: "Discover active requests, read-only workspace archives, or both. Available after compatible shared schema installation."
+          schema:
+            type: string
+            enum: [active, archived, all]
+            default: active
+      responses:
+        "200":
+          description: Paginated list of ETO requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoRequestListResponse"
+    post:
+      operationId: createEtoRequest
+      tags: [eto-requests]
+      summary: Submit a new ETO request (Sales only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EtoRequestInput"
+      responses:
+        "201":
+          description: Created ETO request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoRequest"
+
+  /eto-requests/{id}:
+    get:
+      operationId: getEtoRequest
+      tags: [eto-requests]
+      summary: Get a single ETO request by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: ETO request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoRequest"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateEtoRequest
+      tags: [eto-requests]
+      summary: Update request details (Sales, ART, SuperUser)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EtoRequestPatch"
+      responses:
+        "200":
+          description: Updated ETO request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoRequest"
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+
+  /eto-requests/{id}/reassign:
+    post:
+      operationId: reassignEtoReview
+      tags: [eto-requests]
+      summary: Reassign the current specialist review without changing stage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewReassignmentInput"
+      responses:
+        "200":
+          description: Updated assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewReassignment"
+        "403":
+          description: Only the reviewing department or SuperUser may reassign
+        "404":
+          description: Request not found
+        "409":
+          description: Stage or assignee changed; reopen the reassignment form
+        "422":
+          description: Invalid assignee or input
+
+  /eto-requests/{id}/split:
+    post:
+      operationId: splitEtoRequest
+      tags: [eto-requests]
+      summary: Split an ART Review request into linked child ETOs (ART, SuperUser)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EtoSplitInput"
+      responses:
+        "201":
+          description: Original request and newly created child ETOs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoSplitResult"
+        "403":
+          description: Only ART and SuperUser may split requests
+        "404":
+          description: Request not found
+        "409":
+          description: Request changed or was already split
+        "422":
+          description: Request is not an unsplit ART Review request or count is invalid
+
+  /eto-requests/{id}/transitions:
+    get:
+      operationId: listTransitions
+      tags: [eto-requests]
+      summary: Get the stage transition history (audit log) for an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Stage transition history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StageTransition"
+    post:
+      operationId: submitTransition
+      tags: [eto-requests]
+      summary: Submit a workflow decision on an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionInput"
+      responses:
+        "200":
+          description: Updated ETO request after transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoRequest"
+        "400":
+          description: Invalid transition for current stage or missing required fields
+        "403":
+          description: Role not permitted to make this decision
+        "409":
+          description: Request stage changed before the transition could be applied
+
+  /eto-requests/{id}/comments:
+    get:
+      operationId: listComments
+      tags: [eto-requests]
+      summary: List comments on an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [eto-requests]
+      summary: Add a comment to an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      description: |
+        Returns a presigned GCS URL for direct upload. The client sends JSON
+        metadata here, then uploads the file directly to the returned URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /eto-requests/{id}/attachments:
+    get:
+      operationId: listAttachments
+      tags: [eto-requests]
+      summary: List file attachments on an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attachment"
+    post:
+      operationId: createAttachment
+      tags: [eto-requests]
+      summary: Register an attachment (after uploading the file to storage)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttachmentInput"
+      responses:
+        "201":
+          description: Created attachment record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attachment"
+
+  /eto-requests/{id}/attachments/{attachmentId}:
+    delete:
+      operationId: deleteAttachment
+      tags: [eto-requests]
+      summary: Delete an attachment (uploader or art/engineering/production admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Attachment deleted
+        "403":
+          description: Not authorised to delete this attachment
+        "404":
+          description: Attachment not found
+
+  /eto-requests/{id}/attachments/{attachmentId}/download:
+    get:
+      operationId: getAttachmentDownloadUrl
+      tags: [eto-requests]
+      summary: Get a short-lived signed download URL for an attachment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Signed download URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentDownloadUrl"
+        "404":
+          description: Attachment not found
+
+  /eto-requests/{id}/attachments/{attachmentId}/preview:
+    get:
+      operationId: previewAttachment
+      tags: [eto-requests]
+      summary: Stream an attachment inline for an authenticated preview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inline attachment content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Attachment not found
+        "415":
+          description: Attachment type cannot be previewed safely
+
+  /eto-requests/{id}/attachments/{attachmentId}/preview-link:
+    get:
+      operationId: requestAttachmentPreviewLink
+      tags: [eto-requests]
+      summary: Create a short-lived same-origin link for an attachment preview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Short-lived attachment preview URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentDownloadUrl"
+        "404":
+          description: Attachment not found
+        "415":
+          description: Attachment type cannot be previewed safely
+
+  /eto-requests/{id}/engineering-output:
+    get:
+      operationId: getEngineeringOutput
+      tags: [eto-requests]
+      summary: Get engineering review output for an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Engineering output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineeringOutput"
+        "404":
+          description: No engineering output yet
+    put:
+      operationId: upsertEngineeringOutput
+      tags: [eto-requests]
+      summary: Create or update engineering output (Engineering, ART, SuperUser)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngineeringOutputInput"
+      responses:
+        "200":
+          description: Updated engineering output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineeringOutput"
+        "403":
+          description: Forbidden
+
+  /eto-requests/{id}/production-output:
+    get:
+      operationId: getProductionOutput
+      tags: [eto-requests]
+      summary: Get production review output for an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Production output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionOutput"
+        "404":
+          description: No production output yet
+    put:
+      operationId: upsertProductionOutput
+      tags: [eto-requests]
+      summary: Create or update production output (Production, ART, SuperUser)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductionOutputInput"
+      responses:
+        "200":
+          description: Updated production output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionOutput"
+        "403":
+          description: Forbidden
+
+  /eto-requests/{id}/art-final-output:
+    get:
+      operationId: getArtFinalOutput
+      tags: [eto-requests]
+      summary: Get ART final review output for an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: ART final output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtFinalOutput"
+        "404":
+          description: No ART final output yet
+    put:
+      operationId: upsertArtFinalOutput
+      tags: [eto-requests]
+      summary: Create or update ART final output (ART, SuperUser)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArtFinalOutputInput"
+      responses:
+        "200":
+          description: Updated ART final output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtFinalOutput"
+        "403":
+          description: Forbidden
+
+  /eto-requests/{id}/detail-changes:
+    get:
+      operationId: listDetailChanges
+      tags: [eto-requests]
+      summary: Get the detail edit history for an ETO request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of detail changes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DetailChange"
+
+  # ─── Admin ────────────────────────────────────────────────────────────────────
+
+  /admin/price-calculator:
+    get:
+      operationId: getPriceCalculatorDefaults
+      summary: Get default Price Calculator percentages (Admin or SuperUser)
+      responses:
+        "200":
+          description: Current defaults
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceCalculatorDefaults"
+    put:
+      operationId: updatePriceCalculatorDefaults
+      summary: Save default Price Calculator percentages (Admin or SuperUser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PriceCalculatorInput"
+      responses:
+        "200":
+          description: Updated defaults
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceCalculatorDefaults"
+  /eto-requests/{id}/price-calculator:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getEtoPriceCalculator
+      summary: Get saved ETO percentages or current defaults if not yet saved
+      responses:
+        "200":
+          description: ETO Price Calculator percentages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoPriceCalculator"
+    put:
+      operationId: updateEtoPriceCalculator
+      summary: Save percentages for an ETO during ART Final Review (ART or SuperUser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PriceCalculatorInput"
+      responses:
+        "200":
+          description: Saved ETO percentages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EtoPriceCalculator"
+  /admin/design-formula:
+    get:
+      operationId: getDesignFormula
+      tags: [admin]
+      summary: Get Engineering design cost and lead-time formula settings (Admin, SuperUser)
+      responses:
+        "200":
+          description: Current formula settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesignFormulaSettings"
+        "403":
+          description: Forbidden
+    put:
+      operationId: updateDesignFormula
+      tags: [admin]
+      summary: Update formula constants for future Engineering estimates (Admin, SuperUser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DesignFormulaInput"
+      responses:
+        "200":
+          description: Updated formula settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesignFormulaSettings"
+        "400":
+          description: Invalid formula settings
+        "403":
+          description: Forbidden
+
+  /admin/design-formula/history:
+    get:
+      operationId: getDesignFormulaHistory
+      tags: [admin]
+      summary: List design formula changes, newest first (Admin, SuperUser)
+      description: Returns up to 20 changes per page, ordered by changedAt descending then id descending. Pass nextCursor to request the next page.
+      parameters:
+        - name: cursor
+          in: query
+          description: The nextCursor from the preceding page (change ID).
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Formula change history page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesignFormulaHistoryPage"
+        "400":
+          description: Invalid cursor
+        "403":
+          description: Forbidden
+
+  /admin/assembly-formula:
+    get:
+      operationId: getAssemblyFormula
+      tags: [admin]
+      summary: Get Assembly cost and lead-time formula settings (Admin, SuperUser)
+      responses:
+        "200":
+          description: Current formula settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssemblyFormulaSettings"
+        "403":
+          description: Forbidden
+    put:
+      operationId: updateAssemblyFormula
+      tags: [admin]
+      summary: Update formula constants for future Production estimates (Admin, SuperUser)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssemblyFormulaInput"
+      responses:
+        "200":
+          description: Updated formula settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssemblyFormulaSettings"
+        "400":
+          description: Invalid formula settings
+        "403":
+          description: Forbidden
+
+  /admin/assembly-formula/history:
+    get:
+      operationId: getAssemblyFormulaHistory
+      tags: [admin]
+      summary: List assembly formula changes, newest first (Admin, SuperUser)
+      responses:
+        "200":
+          description: Formula change history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssemblyFormulaChange"
+        "403":
+          description: Forbidden
+
+  # ─── Dashboard ────────────────────────────────────────────────────────────────
+
+  /dashboard/metrics:
+    get:
+      operationId: getDashboardMetrics
+      tags: [dashboard]
+      summary: Get live dashboard metrics and KPIs
+      responses:
+        "200":
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardMetrics"
+
+  /dashboard/my-queue:
+    get:
+      operationId: getMyQueue
+      tags: [dashboard]
+      summary: Get ETO requests currently assigned to the authenticated user
+      responses:
+        "200":
+          description: My assigned queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EtoRequest"
+
+components:
+  schemas:
+    EmailNotificationInput:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+    EmailNotification:
+      type: object
+      required: [type, name, description, enabled]
+      properties:
+        type:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+    EmailNotifications:
+      type: object
+      required: [notifications, deliveryConfigured, linksConfigured]
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailNotification"
+        deliveryConfigured:
+          type: boolean
+        linksConfigured:
+          type: boolean
+    PriceCalculatorInput:
+      type: object
+      required: [contingencyPercent, marginPercent]
+      properties:
+        contingencyPercent:
+          type: string
+          minLength: 1
+          description: "Required numeric percentage from 0 to 100, inclusive"
+        marginPercent:
+          type: string
+          minLength: 1
+          description: "Required numeric percentage from 0 to 100, inclusive"
+    PriceCalculatorDefaults:
+      allOf:
+        - $ref: "#/components/schemas/PriceCalculatorInput"
+        - type: object
+          required: [updatedAt]
+          properties:
+            updatedAt:
+              type: ["string", "null"]
+              format: date-time
+    EtoPriceCalculator:
+      allOf:
+        - $ref: "#/components/schemas/PriceCalculatorDefaults"
+        - type: object
+          required: [saved]
+          properties:
+            saved:
+              type: boolean
+              description: "True when these percentages were saved specifically for this ETO"
+    DesignFormulaSettings:
+      type: object
+      required: [hourlyRate, hoursPerWeek, capacityFactor]
+      properties:
+        hourlyRate:
+          type: string
+          description: USD per estimated design hour
+        hoursPerWeek:
+          type: string
+          description: Working hours per week
+        capacityFactor:
+          type: string
+          description: Fraction of weekly hours available for design (greater than 0, at most 1)
+        updatedAt:
+          type: ["string", "null"]
+          format: date-time
+    DesignFormulaInput:
+      type: object
+      required: [hourlyRate, hoursPerWeek, capacityFactor]
+      properties:
+        hourlyRate:
+          type: string
+          pattern: '^[0-9]+$'
+        hoursPerWeek:
+          type: string
+        capacityFactor:
+          type: string
+    DesignFormulaChange:
+      type: object
+      required: [id, actorUserId, actorName, actorEmail, changedAt, previousValues, newValues]
+      properties:
+        id:
+          type: integer
+        actorUserId:
+          type: integer
+        actorName:
+          type: string
+        actorEmail:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+        previousValues:
+          $ref: "#/components/schemas/DesignFormulaInput"
+        newValues:
+          $ref: "#/components/schemas/DesignFormulaInput"
+    DesignFormulaHistoryPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DesignFormulaChange"
+        nextCursor:
+          type: ["integer", "null"]
+          description: Pass this as cursor to fetch the next page; null means there are no more changes.
+    AssemblyFormulaSettings:
+      type: object
+      required: [hourlyRate, hoursPerWeek, capacityFactor]
+      properties:
+        hourlyRate:
+          type: string
+          description: USD per estimated assembly hour
+        hoursPerWeek:
+          type: string
+          description: Working hours per week
+        capacityFactor:
+          type: string
+          description: Fraction of weekly hours available for assembly
+        updatedAt:
+          type: ["string", "null"]
+          format: date-time
+    AssemblyFormulaInput:
+      type: object
+      required: [hourlyRate, hoursPerWeek, capacityFactor]
+      properties:
+        hourlyRate:
+          type: string
+          pattern: '^[0-9]+$'
+        hoursPerWeek:
+          type: string
+        capacityFactor:
+          type: string
+    AssemblyFormulaChange:
+      type: object
+      required: [id, actorUserId, actorName, actorEmail, changedAt, previousValues, newValues]
+      properties:
+        id:
+          type: integer
+        actorUserId:
+          type: integer
+        actorName:
+          type: string
+        actorEmail:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+        previousValues:
+          $ref: "#/components/schemas/AssemblyFormulaInput"
+        newValues:
+          $ref: "#/components/schemas/AssemblyFormulaInput"
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, "null"]
+        firstName:
+          type: [string, "null"]
+        lastName:
+          type: [string, "null"]
+        profileImageUrl:
+          type: [string, "null"]
+
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
+
+    # ─── Users ─────────────────────────────────────────────────────────────────
+
+    ReviewAssignmentDefaults:
+      type: object
+      required: [entity, engineeringUserId, productionUserId, updatedAt]
+      properties:
+        entity:
+          type: string
+          enum: [TOUS, TOUK]
+        engineeringUserId:
+          type: ["integer", "null"]
+        productionUserId:
+          type: ["integer", "null"]
+        updatedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    ReviewAssignmentDefaultsInput:
+      type: object
+      required: [engineeringUserId, productionUserId]
+      properties:
+        entity:
+          type: string
+          enum: [TOUS, TOUK]
+          default: TOUS
+        engineeringUserId:
+          type: integer
+          description: "Must belong to a user with the Engineering role"
+        productionUserId:
+          type: integer
+          description: "Must belong to a user with the Production role"
+
+    UserCreateInput:
+      type: object
+      required: [name, email, role]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          description: "One of: none, sales, art, engineering, production, admin, superuser"
+
+    User:
+      type: object
+      required: [id, name, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        authId:
+          type: [string, "null"]
+          description: "Null until the user first signs in"
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          description: "One of: none, sales, art, engineering, production, admin, superuser"
+        createdAt:
+          type: string
+          format: date-time
+
+    CurrentUser:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          required: [actualRole, simulatedRole, canSimulateRoles]
+          properties:
+            actualRole:
+              type: string
+              description: "The authenticated user's stored role"
+            simulatedRole:
+              type: ["string", "null"]
+              description: "The effective pilot role selected by a SuperUser, if any"
+            canSimulateRoles:
+              type: boolean
+              description: "Whether this authenticated identity may activate role simulation"
+
+    UserRoleInput:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          description: "One of: none, sales, art, engineering, production, admin, superuser"
+
+    UserSyncInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+
+    # ─── ETO Requests ──────────────────────────────────────────────────────────
+
+    EtoRequest:
+      type: object
+      required:
+        - id
+        - etoNumber
+        - customerName
+        - quoteNumber
+        - quoteRevision
+        - expectedForceUnit
+        - expectedDisplacementUnit
+        - materials
+        - specimenDimensions
+        - stage
+        - includeEngineeringReview
+        - includeProductionReview
+        - submittedById
+        - submittedByName
+        - parentEtoRequestId
+        - parentEtoNumber
+        - splitSequence
+        - splitFamilyId
+        - splitFamilyNumber
+        - splitFamilyPosition
+        - createdAt
+        - updatedAt
+        - overdue
+      properties:
+        entity:
+          type: ["string", "null"]
+          enum: [TOUS, TOUK, null]
+          description: "Entity selected during ART Review"
+        recordKey:
+          type: string
+          description: "Server-owned stable record identity; send x-eto-record-key on every record mutation after schema cutover."
+        migrationEpoch:
+          type: string
+          description: "Server-owned cutover epoch; send x-eto-migration-epoch on every ETO mutation, including creation."
+        archived:
+          type: boolean
+        source:
+          type: string
+          enum: [production, workspace, shared]
+        sourceId:
+          type: integer
+        archiveReason:
+          type: ["string", "null"]
+        id:
+          type: integer
+        etoNumber:
+          type: ["string", "null"]
+          description: "Assigned sequentially on first submission to ART Review, e.g. ETO-2026-0001; null for an unsubmitted draft"
+        customerName:
+          type: string
+        quoteNumber:
+          type: string
+        quoteRevision:
+          type: string
+        testType:
+          type: string
+          description: "Legacy field"
+        distributor:
+          type: ["string", "null"]
+          description: "Yes or No"
+        requestType:
+          type: ["string", "null"]
+          description: "e.g. Machine, Retrofit, Automation"
+        machineType:
+          type: ["string", "null"]
+          description: "e.g. ST, SL, Impact, MFI, HDVT"
+        expectedForceRange:
+          type: ["string", "null"]
+        expectedForceUnit:
+          type: string
+          enum: [kN, lbs, N]
+          default: N
+        expectedDisplacement:
+          type: ["string", "null"]
+        expectedDisplacementUnit:
+          type: string
+          enum: [mm, in]
+          default: mm
+        resultsRequired:
+          type: ["string", "null"]
+        budgetRange:
+          type: ["string", "null"]
+        budgetCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        acceptableLeadTime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        similarParts:
+          type: ["string", "null"]
+        materials:
+          type: string
+        specimenDimensions:
+          type: string
+        relevantStandards:
+          type: ["string", "null"]
+        customerComponents:
+          type: ["string", "null"]
+        customDetails:
+          type: ["string", "null"]
+        stage:
+          type: string
+          description: "One of: draft, art-review, engineering-review, production-review, art-final-review, quoted, won, declined, lost, abandoned"
+        includeEngineeringReview:
+          type: boolean
+          default: true
+          description: "Whether ART included Engineering Review in this request's workflow"
+        includeProductionReview:
+          type: boolean
+          default: true
+          description: "Whether ART included Production Review in this request's workflow"
+        assigneeId:
+          type: ["integer", "null"]
+        assigneeName:
+          type: ["string", "null"]
+        assigneeRole:
+          type: ["string", "null"]
+        productionAssigneeId:
+          type: ["integer", "null"]
+          description: "Production reviewer chosen by ART, preserved until Production Review begins and on returns"
+        engineeringReviewDurationWeeks:
+          type: ["number", "null"]
+        productionReviewDurationWeeks:
+          type: ["number", "null"]
+        artFinalReviewDurationWeeks:
+          type: ["number", "null"]
+        artReviewAcceptedDate:
+          type: ["string", "null"]
+          format: date
+        dueDate:
+          type: ["string", "null"]
+          format: date
+          description: "ART acceptance date plus included Engineering and Production durations and ART Final Review duration; unchanged on returns"
+        stickyEngineerUserId:
+          type: ["integer", "null"]
+          description: "Sticky engineering assignment — reused when Production returns work to Engineering"
+        stickyEngineerName:
+          type: ["string", "null"]
+        submittedById:
+          type: integer
+        submittedByName:
+          type: string
+        parentEtoRequestId:
+          type: ["integer", "null"]
+          description: "Original ETO request ID for a split child"
+        parentEtoNumber:
+          type: ["string", "null"]
+          description: "Original ETO number for a split child"
+        splitSequence:
+          type: ["integer", "null"]
+          description: "Zero-padded suffix sequence used by a split child"
+        splitFamilyId:
+          type: ["integer", "null"]
+          description: "ID of the original request when this request belongs to a split family"
+        splitFamilyNumber:
+          type: ["string", "null"]
+          description: "ETO number of the original request when this request belongs to a split family"
+        splitFamilyPosition:
+          type: ["integer", "null"]
+          description: "0 for the original request, or the child sequence number"
+        splitChildren:
+          type: array
+          description: "Linked child ETOs; populated on request detail responses"
+          items:
+            $ref: "#/components/schemas/LinkedEtoRequest"
+        declineReason:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        overdue:
+          type: boolean
+          description: "True when the request has been inactive past the inactivity threshold (engineering-review: 5 days, others: 3 days)"
+
+    LinkedEtoRequest:
+      type: object
+      required: [id, etoNumber, stage]
+      properties:
+        recordKey:
+          type: string
+        archived:
+          type: boolean
+        source:
+          type: string
+          enum: [production, workspace, shared]
+        id:
+          type: integer
+        etoNumber:
+          type: ["string", "null"]
+        stage:
+          type: string
+
+    EtoSplitInput:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          minimum: 2
+          maximum: 10
+
+    EtoSplitResult:
+      type: object
+      required: [original, children]
+      properties:
+        original:
+          $ref: "#/components/schemas/EtoRequest"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/EtoRequest"
+
+    EtoRequestInput:
+      type: object
+      required:
+        - customerName
+        - quoteNumber
+        - distributor
+        - requestType
+        - machineType
+        - expectedForceRange
+        - expectedForceUnit
+        - expectedDisplacement
+        - expectedDisplacementUnit
+        - materials
+        - specimenDimensions
+        - resultsRequired
+        - customDetails
+      properties:
+        customerName:
+          type: string
+          minLength: 1
+        quoteNumber:
+          type: string
+          minLength: 1
+        quoteRevision:
+          type: string
+        distributor:
+          type: string
+          description: "Yes or No"
+        requestType:
+          type: string
+          description: "e.g. Machine, Retrofit, Automation"
+        machineType:
+          type: string
+          description: "e.g. ST, SL, Impact, MFI, HDVT"
+        expectedForceRange:
+          type: string
+          minLength: 1
+        expectedForceUnit:
+          type: string
+          enum: [kN, lbs, N]
+        expectedDisplacement:
+          type: string
+          minLength: 1
+        expectedDisplacementUnit:
+          type: string
+          enum: [mm, in]
+        materials:
+          type: string
+          minLength: 1
+        specimenDimensions:
+          type: string
+          minLength: 1
+        resultsRequired:
+          type: string
+          minLength: 1
+        customDetails:
+          type: string
+          minLength: 1
+          description: "Custom Requests"
+        relevantStandards:
+          type: string
+        budgetRange:
+          type: string
+          pattern: '^\s*(?:[0-9]+(?:,[0-9]{3})*(?:\s*[-–]\s*[0-9]+(?:,[0-9]{3})*)?)?\s*$'
+        budgetCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        acceptableLeadTime:
+          type: string
+          description: "Lead time in weeks"
+        similarParts:
+          type: string
+
+    EtoRequestListResponse:
+      type: object
+      required: [items, total, totalGroups, page, limit]
+      properties:
+        migrationEpoch:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EtoRequest"
+        total:
+          type: integer
+          description: "Total number of matching ETO requests"
+        totalGroups:
+          type: integer
+          description: "Total number of matching standalone requests or split families; pagination is based on this count"
+        page:
+          type: integer
+        limit:
+          type: integer
+          description: "Maximum number of standalone requests or split families per page"
+
+    ReviewReassignmentInput:
+      type: object
+      required: [assigneeId, expectedStage, expectedAssigneeId]
+      properties:
+        assigneeId:
+          type: integer
+          minimum: 1
+        expectedStage:
+          type: string
+          enum: [engineering-review, production-review]
+        expectedAssigneeId:
+          type: ["integer", "null"]
+          minimum: 1
+
+    ReviewReassignment:
+      type: object
+      required: [id, stage, assigneeId, assigneeName, department, updatedAt]
+      properties:
+        id:
+          type: integer
+        stage:
+          type: string
+          enum: [engineering-review, production-review]
+        assigneeId:
+          type: integer
+        assigneeName:
+          type: string
+        department:
+          type: string
+          enum: [engineering, production]
+        updatedAt:
+          type: string
+          format: date-time
+
+    TransitionInput:
+      type: object
+      required: [decision]
+      properties:
+        entity:
+          type: ["string", "null"]
+          enum: [TOUS, TOUK, null]
+          description: "ART Review entity selection for approve-engineering; omitted values retain the saved selection"
+        decision:
+          type: string
+          description: >
+            Valid decisions:
+            Draft: submit
+            ART Review: approve-engineering | return-draft | decline
+            Engineering: engineering-quote-ready | engineering-return-art
+            Production: production-approve | production-return-engineering
+            ART Final: art-final-quote | art-final-return-production | art-final-return-engineering | decline
+            Quoted: mark-won | mark-lost | quoted-return-art-final
+            ART/SuperUser: mark-abandoned | reopen
+        reason:
+          type: ["string", "null"]
+          description: "Required for: return-draft, engineering-return-art, production-return-engineering, art-final-return-production, art-final-return-engineering, quoted-return-art-final, decline, mark-lost, mark-abandoned"
+        assigneeId:
+          type: ["integer", "null"]
+          description: "Optional Engineering reviewer override for approve-engineering; otherwise uses the configured default"
+        productionAssigneeId:
+          type: ["integer", "null"]
+          minimum: 1
+          description: "Production reviewer chosen during ART acceptance, including when Engineering happens first"
+        engineeringReviewDurationWeeks:
+          type: number
+          minimum: 0
+          maximum: 520
+          default: 1
+        productionReviewDurationWeeks:
+          type: number
+          minimum: 0
+          maximum: 520
+          default: 1
+        artFinalReviewDurationWeeks:
+          type: number
+          minimum: 0
+          maximum: 520
+          default: 1
+        reviewTimeZone:
+          type: string
+          maxLength: 100
+          description: "Browser IANA time zone used to determine the server-owned ART acceptance calendar date"
+        includeEngineeringReview:
+          type: boolean
+          default: true
+          description: "For approve-engineering, include or skip Engineering Review"
+        includeProductionReview:
+          type: boolean
+          default: true
+          description: "For approve-engineering, include or skip Production Review"
+        engineeringEstimatedDesignHours:
+          type: ["string", "null"]
+          description: "Required for engineering-quote-ready; positive number of hours"
+        engineeringPnGuidance:
+          type: ["string", "null"]
+          description: "Required for engineering-quote-ready"
+        engineeringNotes:
+          type: ["string", "null"]
+        engineeringRiskScore:
+          $ref: "#/components/schemas/RiskScore"
+        engineeringRiskNotes:
+          type: ["string", "null"]
+          description: "Required explanation when engineeringRiskScore is High"
+        productionProcurementCost:
+          type: ["string", "null"]
+          pattern: '^[0-9]*$'
+          description: "Required for production-approve; non-negative amount"
+        productionProcurementCostCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        productionProcurementLeadTime:
+          type: ["string", "null"]
+          description: "Required for production-approve; enter in weeks"
+        productionAssemblyTimeHours:
+          type: ["string", "null"]
+          description: "Required for production-approve; enter in hours"
+        productionNotes:
+          type: ["string", "null"]
+        productionRiskScore:
+          $ref: "#/components/schemas/RiskScore"
+        productionRiskNotes:
+          type: ["string", "null"]
+          description: "Required explanation when productionRiskScore is High"
+        artMarketPrice:
+          type: ["string", "null"]
+          pattern: '^[0-9]*$'
+          description: "Required for art-final-quote"
+        artMarketPriceCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        artMarketLeadtime:
+          type: ["string", "null"]
+          description: "Required for art-final-quote; enter in weeks"
+        artQuoteDescription:
+          type: string
+          minLength: 1
+          description: "Description of the quoted part; required and non-empty for art-final-quote"
+        artNotes:
+          type: ["string", "null"]
+
+    StageTransition:
+      type: object
+      required: [id, etoRequestId, actorId, actorName, actorRole, fromStage, toStage, decision, createdAt]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        actorId:
+          type: integer
+        actorName:
+          type: string
+        actorRole:
+          type: string
+        simulatedRole:
+          type: ["string", "null"]
+        fromStage:
+          type: string
+        toStage:
+          type: string
+        decision:
+          type: string
+        reason:
+          type: ["string", "null"]
+        includeEngineeringReview:
+          type: ["boolean", "null"]
+          description: "Engineering Review selection recorded for an ART approval"
+        includeProductionReview:
+          type: ["boolean", "null"]
+          description: "Production Review selection recorded for an ART approval"
+        createdAt:
+          type: string
+          format: date-time
+
+    Comment:
+      type: object
+      required: [id, etoRequestId, authorId, authorName, authorRole, body, createdAt]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        authorId:
+          type: integer
+        authorName:
+          type: string
+        authorRole:
+          type: string
+        simulatedRole:
+          type: ["string", "null"]
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CommentInput:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+
+    Attachment:
+      type: object
+      required: [id, etoRequestId, uploaderId, uploaderName, filename, storageKey, createdAt]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        uploaderId:
+          type: integer
+        uploaderName:
+          type: string
+        filename:
+          type: string
+        storageKey:
+          type: string
+        contentType:
+          type: ["string", "null"]
+        fileSize:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    AttachmentInput:
+      type: object
+      required: [filename, storageKey]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+        storageKey:
+          type: string
+        contentType:
+          type: string
+        fileSize:
+          type: integer
+
+    AttachmentDownloadUrl:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    RiskScore:
+      type: ["string", "null"]
+      enum: [Low, Med, High, null]
+      description: "Review risk assessment; null for reviews without a recorded score"
+
+    EngineeringOutput:
+      type: object
+      required: [id, etoRequestId, createdAt]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        costEstimate:
+          type: ["string", "null"]
+        costEstimateCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        docLeadtime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        estimatedDesignHours:
+          type: ["string", "null"]
+          description: "Estimated design work in hours"
+        designCost:
+          type: ["string", "null"]
+          description: "Calculated design cost in USD, saved when design hours were set"
+        designLeadTimeWeeks:
+          type: ["string", "null"]
+          description: "Calculated design lead time in weeks, saved when design hours were set"
+        pnGuidance:
+          type: ["string", "null"]
+        riskScore:
+          $ref: "#/components/schemas/RiskScore"
+        riskNotes:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ProductionOutput:
+      type: object
+      required: [id, etoRequestId, createdAt]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        mfgLeadtime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        prodLeadtime:
+          type: ["string", "null"]
+          description: "Legacy production lead time in weeks"
+        procurementCost:
+          type: ["string", "null"]
+        procurementCostCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        procurementLeadTime:
+          type: ["string", "null"]
+          description: "Procurement lead time in weeks"
+        assemblyTimeHours:
+          type: ["string", "null"]
+          description: "Assembly time in hours"
+        assemblyCost:
+          type: ["string", "null"]
+          description: "Calculated assembly cost, saved when assembly hours were set"
+        assemblyCostCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        assemblyLeadTimeWeeks:
+          type: ["string", "null"]
+          description: "Calculated assembly lead time in weeks, saved when assembly hours were set"
+        riskScore:
+          $ref: "#/components/schemas/RiskScore"
+        riskNotes:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ArtFinalOutput:
+      type: object
+      required: [id, etoRequestId, createdAt]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        marketPrice:
+          type: ["string", "null"]
+        marketPriceCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        marketLeadtime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        quoteDescription:
+          type: ["string", "null"]
+          description: "Description of the quoted part"
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    EtoRequestPatch:
+      type: object
+      properties:
+        assigneeId:
+          type: ["integer", "null"]
+          description: "Engineer assignment; may be changed while the request is in Engineering Review"
+        customerName:
+          type: string
+          minLength: 1
+        quoteNumber:
+          type: string
+          minLength: 1
+        quoteRevision:
+          type: string
+        distributor:
+          type: ["string", "null"]
+        requestType:
+          type: ["string", "null"]
+        machineType:
+          type: ["string", "null"]
+        expectedForceRange:
+          type: ["string", "null"]
+        expectedForceUnit:
+          type: string
+          enum: [kN, lbs, N]
+        expectedDisplacement:
+          type: ["string", "null"]
+        expectedDisplacementUnit:
+          type: string
+          enum: [mm, in]
+        materials:
+          type: string
+          minLength: 1
+        specimenDimensions:
+          type: string
+          minLength: 1
+        resultsRequired:
+          type: ["string", "null"]
+        customDetails:
+          type: ["string", "null"]
+        relevantStandards:
+          type: ["string", "null"]
+        budgetRange:
+          type: ["string", "null"]
+          pattern: '^\s*(?:[0-9]+(?:,[0-9]{3})*(?:\s*[-–]\s*[0-9]+(?:,[0-9]{3})*)?)?\s*$'
+        budgetCurrency:
+          type: ["string", "null"]
+          enum: [USD, GBP, EUR, CNY]
+        acceptableLeadTime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        similarParts:
+          type: ["string", "null"]
+
+    EngineeringOutputInput:
+      type: object
+      properties:
+        costEstimate:
+          type: ["string", "null"]
+          pattern: '^[0-9]*$'
+        costEstimateCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        docLeadtime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        estimatedDesignHours:
+          type: ["string", "null"]
+          description: "Estimated design work in hours"
+        pnGuidance:
+          type: ["string", "null"]
+        riskScore:
+          $ref: "#/components/schemas/RiskScore"
+        riskNotes:
+          type: ["string", "null"]
+          description: "Required explanation when riskScore is High"
+        notes:
+          type: ["string", "null"]
+
+    ProductionOutputInput:
+      type: object
+      properties:
+        mfgLeadtime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        prodLeadtime:
+          type: ["string", "null"]
+          description: "Legacy production lead time in weeks"
+        procurementCost:
+          type: ["string", "null"]
+          pattern: '^[0-9]*$'
+        procurementCostCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        procurementLeadTime:
+          type: ["string", "null"]
+          description: "Procurement lead time in weeks"
+        assemblyTimeHours:
+          type: ["string", "null"]
+          description: "Assembly time in hours"
+        # Assembly Cost and Assembly Lead Time are calculated by the server; not editable here.
+        riskScore:
+          $ref: "#/components/schemas/RiskScore"
+        riskNotes:
+          type: ["string", "null"]
+          description: "Required explanation when riskScore is High"
+        notes:
+          type: ["string", "null"]
+
+    ArtFinalOutputInput:
+      type: object
+      properties:
+        marketPrice:
+          type: ["string", "null"]
+          pattern: '^[0-9]*$'
+        marketPriceCurrency:
+          type: string
+          enum: [USD, GBP, EUR, CNY]
+          default: USD
+        marketLeadtime:
+          type: ["string", "null"]
+          description: "Lead time in weeks"
+        quoteDescription:
+          type: string
+          minLength: 1
+          description: "Required non-empty part description; omission preserves an existing non-empty description"
+        notes:
+          type: ["string", "null"]
+
+    DetailFieldChange:
+      type: object
+      required: [field, oldValue, newValue]
+      properties:
+        field:
+          type: string
+        oldValue:
+          type: ["string", "null"]
+        newValue:
+          type: ["string", "null"]
+
+    DetailChange:
+      type: object
+      required: [id, etoRequestId, section, changedById, changedByName, changedByRole, changedAt, changes]
+      properties:
+        id:
+          type: integer
+        etoRequestId:
+          type: integer
+        section:
+          type: string
+          enum: [request, engineering, production, art-final]
+        changedById:
+          type: integer
+        changedByName:
+          type: string
+        changedByRole:
+          type: string
+        simulatedRole:
+          type: ["string", "null"]
+        changedAt:
+          type: string
+          format: date-time
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DetailFieldChange"
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType, etoRequestId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Original file name.
+        size:
+          type: integer
+          minimum: 1
+          description: File size in bytes.
+        contentType:
+          type: string
+          minLength: 1
+          description: MIME type of the file (e.g. `image/jpeg`).
+        etoRequestId:
+          type: integer
+          description: The ETO request this file will be attached to.
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+          description: Presigned GCS URL for PUT upload.
+        objectPath:
+          type: string
+          description: Normalized object path (e.g. `/objects/uploads/uuid`). Store this in your database.
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    DashboardMetrics:
+      type: object
+      required:
+        - stageCounts
+        - totalOpen
+        - totalWon
+        - totalDeclined
+        - totalLost
+        - declinesByStage
+        - moreInfoLoopCount
+        - avgTimePerStageHours
+        - overdueCount
+      properties:
+        stageCounts:
+          type: object
+          description: "Count of ETOs currently in each stage"
+          additionalProperties:
+            type: integer
+        totalOpen:
+          type: integer
+        totalWon:
+          type: integer
+        totalDeclined:
+          type: integer
+        totalLost:
+          type: integer
+        declinesByStage:
+          type: object
+          description: "How many declines happened from each stage"
+          additionalProperties:
+            type: integer
+        moreInfoLoopCount:
+          type: integer
+          description: "Total number of more-info requests across all ETOs"
+        avgTimePerStageHours:
+          type: object
+          description: "Average hours spent in each stage across all ETOs"
+          additionalProperties:
+            type: number
+        overdueCount:
+          type: integer
+          description: "Number of non-terminal ETOs past the inactivity threshold (engineering-review = 5 days, others = 3 days)"
