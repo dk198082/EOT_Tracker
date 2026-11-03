@@ -1,4 +1,3 @@
-
 name: ETO Tracker - Azure Deployment
 
 on:
@@ -24,6 +23,24 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      - name: Inspect GitHub OIDC claims
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('api://AzureADTokenExchange');
+            const payload = JSON.parse(
+              Buffer.from(token.split('.')[1], 'base64url').toString()
+            );
+
+            console.log('Issuer:', payload.iss);
+            console.log('Subject:', payload.sub);
+            console.log('Audience:', payload.aud);
+            console.log('Repository:', payload.repository);
+            console.log('Repository ID:', payload.repository_id);
+            console.log('Owner:', payload.repository_owner);
+            console.log('Owner ID:', payload.repository_owner_id);
+            console.log('Ref:', payload.ref);
+            console.log('Workflow ref:', payload.job_workflow_ref); 
 
       - name: Azure login using OIDC
         uses: azure/login@v2
