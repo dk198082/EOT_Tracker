@@ -40,7 +40,7 @@ COPY lib/api-client-react/package.json lib/api-client-react/package.json
 COPY lib/api-spec/package.json lib/api-spec/package.json
 COPY lib/object-storage-web/package.json lib/object-storage-web/package.json
 COPY lib/replit-auth-web/package.json lib/replit-auth-web/package.json
-COPY scripts/package.json scripts/package.json
+COPY scripts/ scripts/
 
 RUN pnpm install --frozen-lockfile
 
