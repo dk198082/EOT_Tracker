@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  ACR_NAME: EOTprod
+  ACR_NAME: eotprod
   IMAGE_NAME: eto-tracker
   RESOURCE_GROUP: toaxrgp
   WEBAPP_NAME: EOTTraceProd
