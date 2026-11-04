@@ -18,7 +18,7 @@ interface AuthState {
 }
 
 const WORKSPACE_ORIGIN =
-  "http://localhost:5175/";
+  "https://eottraceprod-bmashte5h8cbahfg.eastus2-01.azurewebsites.net/";
 
 function getBasePath() {
   const baseUrl = (
