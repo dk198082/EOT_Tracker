@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from "react";
 
 export interface AuthUser {
@@ -16,8 +17,16 @@ interface AuthState {
   logout: () => void;
 }
 
+const WORKSPACE_ORIGIN =
+  "http://localhost:5175/";
+
 function getBasePath() {
-  const baseUrl = (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env?.BASE_URL ?? "/";
+  const baseUrl = (
+    import.meta as ImportMeta & {
+      env?: { BASE_URL?: string };
+    }
+  ).env?.BASE_URL ?? "/";
+
   return baseUrl.replace(/\/+$/, "") || "/";
 }
 
@@ -27,15 +36,36 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/user", { credentials: "include" })
+
+    fetch("/api/auth/user", {
+      credentials: "include",
+    })
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ user: AuthUser | null }>;
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        return res.json() as Promise<{
+          user: AuthUser | null;
+        }>;
       })
       .then((data) => {
-        if (!cancelled) {
-          setUser(data.user ?? null);
-          setIsLoading(false);
+        if (cancelled) return;
+
+        const authenticatedUser = data.user ?? null;
+
+        setUser(authenticatedUser);
+        setIsLoading(false);
+
+        // Notify Workspace only after successful authentication.
+        if (
+          authenticatedUser &&
+          window.parent !== window
+        ) {
+          window.parent.postMessage(
+            { type: "ETO_AUTH_COMPLETE" },
+            WORKSPACE_ORIGIN,
+          );
         }
       })
       .catch(() => {
@@ -51,7 +81,9 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback(() => {
-    const loginUrl = `/api/login?returnTo=${encodeURIComponent(getBasePath())}`;
+    const loginUrl =
+      `/api/login?returnTo=${encodeURIComponent(getBasePath())}`;
+
     const isEmbedded = window.top !== window.self;
 
     if (isEmbedded) {
@@ -63,8 +95,15 @@ export function useAuth(): AuthState {
   }, []);
 
   const logout = useCallback(() => {
-    window.location.href = `/api/logout?returnTo=${encodeURIComponent(getBasePath())}`;
+    window.location.href =
+      `/api/logout?returnTo=${encodeURIComponent(getBasePath())}`;
   }, []);
 
-  return { user, isLoading, isAuthenticated: !!user, login, logout };
+  return {
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    login,
+    logout,
+  };
 }
