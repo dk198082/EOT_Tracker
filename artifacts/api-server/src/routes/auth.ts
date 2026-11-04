@@ -271,14 +271,24 @@ router.get("/auth/embedded-sso", async (req, res, next) => {
     clearOidcCookies(res);
     setSessionCookie(res, sid);
 
+    const frontendUrl =
+      process.env.FRONTEND_URL?.trim();
+
+    if (!frontendUrl) {
+      throw new Error(
+        "FRONTEND_URL is not configured.",
+      );
+    }
+
     const destination = new URL(
       returnTo,
-      `${getOrigin(req)}/`,
+      `${frontendUrl.replace(/\/+$/, "")}/`,
     );
 
     destination.searchParams.set("embedded", "1");
 
     res.redirect(destination.href);
+
   } catch (error) {
     next(error);
   }
