@@ -17,7 +17,12 @@ router.get("/email-notifications", requireAuth, async (_req, res, next) => {
   try {
     res.json({
       notifications: await getEmailNotificationSettings(),
-      deliveryConfigured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM),
+      deliveryConfigured: Boolean(
+        process.env.CLIENT_ID &&
+        process.env.CLIENT_SECRET &&
+        (process.env.ENTRA_TENANT_ID || process.env.TENANT_ID || process.env.AZURE_TENANT_ID) &&
+        process.env.GRAPH_SENDER_EMAIL,
+      ),
       linksConfigured: Boolean(process.env.APP_BASE_URL),
     });
   } catch (err) { next(err); }
@@ -299,7 +304,7 @@ router.post("/email/test", requireAuth, async (_req, res, next) => {
     <div class="header"><h1>ETO Tracker</h1></div>
     <div class="body">
       <p>This is a test message sent via <strong>POST /api/admin/email/test</strong>.</p>
-      <p>If you received this, Resend is configured correctly and email delivery is working.</p>
+      <p>If you received this, Microsoft Graph is configured correctly and email delivery is working.</p>
     </div>
     <div class="footer">Sent by ETO Tracker admin email health check.</div>
   </div>
@@ -312,7 +317,7 @@ router.post("/email/test", requireAuth, async (_req, res, next) => {
     } else {
       res.status(502).json({
         ok: false,
-        error: "Resend rejected the message or email is not configured — check server logs for details",
+        error: "Microsoft Graph rejected the message or email is not configured — check server logs for details",
       });
     }
   } catch (err) {
