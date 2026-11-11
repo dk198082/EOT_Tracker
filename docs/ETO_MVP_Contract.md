@@ -86,7 +86,7 @@ Active stages → Abandoned → Re-opened at the previous active stage
 | **User / Review Defaults** | Name, email, local role linked to Microsoft identity; separately configurable Engineering and Production default users |
 
 ### Notifications
-Notifications use email only, with an ETO number in the subject and a link back to the record. Resend must be configured; otherwise delivery is skipped, and delivery failures do not block workflow transitions. A durable delivery history is not currently available.
+Notifications use email only, with an ETO number in the subject and a link back to the record. Microsoft Graph must be configured with Entra app credentials and a sender mailbox that has `Mail.Send` permission; otherwise delivery is skipped, and delivery failures do not block workflow transitions. Audit Trail → Email records new notification attempts, grouped by originating event with all recipients together. Graph acceptance is not confirmed inbox delivery.
 
 | Trigger | Recipients |
 |---|---|
@@ -119,7 +119,7 @@ The API exposes a legacy "more info" count, but it does not count the current re
 | Database | PostgreSQL via Drizzle ORM (Replit managed) |
 | File storage | Replit Object Storage (attachments) |
 | Auth | Microsoft Entra ID via OIDC; local app user records retain roles (`sales`, `art`, `engineering`, `production`, `admin`, `superuser`) |
-| Email | Resend (stage notifications and reminders, only when configured) |
+| Email | Microsoft Graph (stage notifications and reminders, only when configured) |
 | Scheduled jobs | Node-cron in the API server (daily sweep for inactivity reminders) |
 
 ### Integrations
@@ -127,7 +127,7 @@ The API exposes a legacy "more info" count, but it does not count the current re
 | Integration | Scope |
 |---|---|
 | **Microsoft Entra ID** | Authentication and identity. Admins may pre-create app users and set local roles in Admin → Users; first Entra sign-in links the account. |
-| **Resend** | Outbound email notifications and reminders. No inbound email. |
+| **Microsoft Graph** | Outbound email notifications and reminders, sent from the configured mailbox. No inbound email. |
 | **Replit Object Storage** | Optional private attachments, authenticated access and signed download links; supported documents/images may be text-extracted or OCR-indexed. |
 | **D365 / Azure CRM** | No two-way workflow sync or won-order webhook. The ETO number is available for manual use in D365; an optional read-only Azure CRM PostgreSQL health connection does not write orders. |
 
@@ -155,4 +155,4 @@ The following capabilities are not part of the current application:
 | Quote document generation (PDF/Word) | Manual process is acceptable at MVP scale |
 | Mobile app | Web app on desktop is the primary use context |
 | Reliable time-in-stage and current return-loop KPIs | Current dashboard does not compute these accurately |
-| Notification delivery history | Send attempts can be logged, but there is no persistent admin delivery log |
+| Inbox-delivery confirmation | Request-level send-attempt history exists; Graph acceptance does not establish inbox delivery |

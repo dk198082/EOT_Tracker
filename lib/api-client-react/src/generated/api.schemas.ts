@@ -5,6 +5,46 @@
  * ETO Tracker API
  * OpenAPI spec version: 0.1.0
  */
+export type EmailDeliveryMessageStatus = typeof EmailDeliveryMessageStatus[keyof typeof EmailDeliveryMessageStatus];
+
+
+export const EmailDeliveryMessageStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface EmailDeliveryMessage {
+  name: string;
+  subject: string;
+  recipients: string[];
+  status: EmailDeliveryMessageStatus;
+}
+
+export type EmailDeliveryEventStatus = typeof EmailDeliveryEventStatus[keyof typeof EmailDeliveryEventStatus];
+
+
+export const EmailDeliveryEventStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  partial: 'partial',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface EmailDeliveryEvent {
+  id: number;
+  etoRequestId: number;
+  eventName: string;
+  recipients: string[];
+  messages: EmailDeliveryMessage[];
+  status: EmailDeliveryEventStatus;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
 export interface EmailNotificationInput {
   enabled: boolean;
 }

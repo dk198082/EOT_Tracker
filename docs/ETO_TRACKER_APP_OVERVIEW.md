@@ -199,7 +199,7 @@ detail-change records containing the section and field-level old/new values.
 
 ### 2.9 Notifications and reminders
 
-Resend is used for outbound notifications when configured:
+Microsoft Graph is used for outbound notifications when configured:
 
 - new submission notification to the ART team;
 - stage-change notification to the submitter and new owner;
@@ -211,11 +211,14 @@ The reminder sweep runs once at startup and daily at 08:00 UTC through
 
 - 3-day inactivity threshold for non-Engineering stages;
 - 5-day inactivity threshold for Engineering Review;
-- a reminder is not stamped as sent unless Resend accepts it; and
+- a reminder is not stamped as sent unless Graph accepts it; and
 - skipped or failed sends can be retried on a later sweep.
 
 Email is intentionally fire-and-forget: an email outage does not block a
-workflow action. There is no delivery-history UI in the current MVP.
+workflow action. Audit Trail → Email shows new send attempts as one event per
+workflow action, with all recipients grouped together and per-message Graph
+acceptance/failure outcomes. Pending entries have no confirmed outcome;
+Graph acceptance does not establish inbox delivery. History is not backfilled.
 
 ## 3. Integrations and external services
 
@@ -226,7 +229,7 @@ workflow action. There is no delivery-history UI in the current MVP.
 | **Replit Auth / OIDC** | Login, logout, session refresh, and authenticated identity | OIDC identity and tokens are stored in server-side sessions; local role-bearing user record is keyed to the authenticated identity | Implemented |
 | **PostgreSQL** | System-of-record database | Users, sessions, ETOs, outputs, comments, attachments metadata, audit history, and detail changes | Implemented |
 | **Replit Object Storage** | Private attachment storage | Uploaded files and independent copies created during split | Implemented |
-| **Resend** | Transactional email notifications and inactivity reminders | Recipient, subject, and rendered notification body | Optional; disabled when `RESEND_API_KEY` or `RESEND_FROM` is absent |
+| **Microsoft Graph** | Transactional email notifications and inactivity reminders | Recipient, subject, and rendered notification body | Optional; disabled when Entra app credentials or `GRAPH_SENDER_EMAIL` are absent |
 | **Tesseract** | OCR for supported image attachments | Extracted text used for search indexing | Local server-side processing |
 | **officeparser** | Text extraction from supported Office/PDF formats | Extracted text used for search indexing | Local server-side processing |
 | **node-cron** | Schedules the inactivity reminder sweep | No external data; triggers reminder logic | Implemented |
@@ -254,8 +257,10 @@ connectors.
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection |
 | `REPL_ID` | Replit Auth OIDC client identity |
-| `RESEND_API_KEY` | Enables Resend |
-| `RESEND_FROM` | Verified Resend sender |
+| `AZURE_TENANT_ID` (or `TENANT_ID` / `ENTRA_TENANT_ID`) | Microsoft Entra tenant for app-only Graph authentication |
+| `CLIENT_ID` | Microsoft Entra application client ID |
+| `CLIENT_SECRET` | Microsoft Entra application client secret |
+| `GRAPH_SENDER_EMAIL` | Mailbox used for Microsoft Graph `sendMail` |
 | `APP_BASE_URL` | Optional base URL for email deep links |
 | `REPLIT_DEV_DOMAIN` | Fallback deep-link host in development |
 | Object-storage environment values | Private/public storage paths and bucket access |
@@ -464,7 +469,7 @@ hooks and Zod types are generated from that contract with Orval.
 
 Core runtime technologies include React, Vite, TypeScript, Express 5,
 PostgreSQL, Drizzle ORM, Zod, Orval, React Query, Replit Auth OIDC,
-Object Storage, Resend, `node-cron`, Tesseract, and `officeparser`.
+Object Storage, Microsoft Graph, `node-cron`, Tesseract, and `officeparser`.
 
 ## 8. Operational behavior
 
@@ -479,7 +484,7 @@ Object Storage, Resend, `node-cron`, Tesseract, and `officeparser`.
   `pnpm --filter @workspace/db run push`
 - The API listens on the configured `PORT`.
 - The reminder sweep runs at startup and daily at 08:00 UTC.
-- Missing Resend configuration is logged and disables email without preventing
+- Missing Graph configuration is logged and disables email without preventing
   the API from starting.
 
 ## 9. Current limitations and deferred capabilities
@@ -492,7 +497,7 @@ The following are not part of the current MVP or are intentionally incomplete:
 - historical ETO import;
 - automatic quote PDF/Word generation;
 - mobile-native application;
-- delivery-history UI for outbound email;
+- inbox-delivery confirmation for outbound email (send-attempt history is available);
 - average time-in-stage metrics;
 - self-service role administration for normal users;
 - configurable workflow paths beyond the implemented linear stages;

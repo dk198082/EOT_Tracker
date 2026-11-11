@@ -86,7 +86,7 @@ export function EmailNotificationSettings() {
       </div>
       {!data.deliveryConfigured && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Email delivery is not configured. A Resend API key and verified sender address must be configured before emails can be delivered.
+          Email delivery is not configured. Microsoft Entra credentials and a sender mailbox with Graph Mail.Send permission must be configured before emails can be delivered.
           Switching a notification on does not configure the email provider.
         </p>
       )}

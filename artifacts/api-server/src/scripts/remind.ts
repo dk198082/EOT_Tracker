@@ -98,7 +98,7 @@ export async function runReminders(): Promise<void> {
       });
 
       if (accepted) {
-        // Only stamp last_reminded_at when Resend confirmed receipt.
+        // Only stamp last_reminded_at when Microsoft Graph accepted the message.
         // Failed or skipped sends leave the field unchanged so the next
         // sweep can retry without waiting a full threshold period.
         await db
@@ -109,7 +109,7 @@ export async function runReminders(): Promise<void> {
         reminded++;
         logger.info(
           { etoId: row.id, etoNumber: row.etoNumber, daysInactive, stage: row.stage },
-          "Reminder email accepted by Resend",
+          "Reminder email accepted by Microsoft Graph",
         );
       } else {
         logger.warn(

@@ -47,6 +47,7 @@ import { calculateLeadTime, type ReviewLeadTimes } from "@/lib/lead-time-calcula
 import { StagePill } from "@/components/StagePill";
 import { AssignedProductionNote } from "@/components/AssignedProductionNote";
 import { ReassignReview } from "@/components/ReassignReview";
+import { EmailAuditTrail } from "@/components/EmailAuditTrail";
 import { RiskScoreFields, type SelectedRiskScore } from "@/components/RiskScoreFields";
 import { ReviewScheduleFields, validReviewDurations, formatCalendarDate } from "@/components/ReviewScheduleFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -600,7 +601,12 @@ export default function EtoDetail({ id }: EtoDetailProps) {
                       </span>
                     )}
                   </TabsTrigger>
+                  <TabsTrigger value="email" className="flex-1">Email</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="email">
+                  <EmailAuditTrail requestId={id} />
+                </TabsContent>
 
                 {/* Stage tab */}
                 <TabsContent value="stage">

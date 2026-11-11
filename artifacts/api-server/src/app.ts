@@ -10,10 +10,11 @@ import { logger } from "./lib/logger";
 import { getTrustedOrigins } from "./lib/trustedOrigins";
 
 const app: Express = express();
-// Needed behind Azure's reverse proxy (App Service / Container Apps) so
-// req.secure/req.protocol and the x-forwarded-* headers this app already
-// reads (routes/auth.ts's getOrigin()) reflect the original client request
-// rather than the internal container connection.
+// --- AZURE DEPLOYMENT ---------------------------------------------------
+// Azure App Service / Container Apps sit the container behind a load
+// balancer/reverse proxy; trusting it so req.protocol/req.secure and
+// secure cookies reflect the real (HTTPS) client request, not the
+// container's own plain-HTTP listener.
 app.set("trust proxy", 1);
 
 app.use(
@@ -80,11 +81,6 @@ if (staticDir) {
     );
   }
   app.use(express.static(resolvedStaticDir));
-  // SPA fallback: any non-API, non-file GET request returns index.html so
-  // client-side routing can handle the path. Registered after "/api" so API
-  // routes/404s above are never shadowed by this. Uses a RegExp route (not a
-  // bare "*" string) because Express 5's router (path-to-regexp v8) rejects
-  // an unnamed "*" wildcard outright.
   app.get(/^(?!\/api\/).*/, (_req, res) => {
     res.sendFile(path.join(resolvedStaticDir, "index.html"));
   });

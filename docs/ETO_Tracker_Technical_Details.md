@@ -18,7 +18,7 @@ Express API at /api
   request validation → role gate → workflow/state validation
             │                   │                    │
             ▼                   ▼                    ▼
-  PostgreSQL / Drizzle    Private Object Storage    Resend email
+   PostgreSQL / Drizzle    Private Object Storage    Microsoft Graph email
   lib/db/src/schema       attachments + previews   if configured
             ▲
             │
@@ -33,7 +33,7 @@ Express API at /api
 | `artifacts/api-server` | Express routes under `/api`; OIDC/session handling, role authorization, request persistence, state machine, calculations, storage access, notifications, and background jobs. |
 | `lib/db` | Drizzle schema and PostgreSQL connection. Local users retain application roles independently of Entra identity. |
 | Replit Object Storage | Private attachment objects. Database attachment rows carry metadata and storage references; file bytes are not stored in PostgreSQL. |
-| Resend | Optional outbound stage-change emails and inactivity reminders. Email acceptance is not required for a successful stage transition. |
+| Microsoft Graph | Optional outbound stage-change emails and inactivity reminders, sent from the configured tenant mailbox. Email acceptance is not required for a successful stage transition. |
 | Azure CRM PostgreSQL | Optional read-only **health connection**. It does not perform ETO/D365 synchronization or write orders. |
 
 The web artifact uses its configured base path for browser routes. The API router is mounted at `/api`. The API server listens on `PORT`; its startup registers the jobs described in §10.
@@ -187,7 +187,7 @@ All paths in this table have the `/api` prefix. Unless noted, workflow/data rout
 | Upload/storage | `POST /storage/uploads/request-url`; `GET /storage/public-objects/*filePath` | Signed upload authorization for private objects; separate public-object serving. Private attachments are **not** exposed by the public route. |
 | Admin settings | `GET/PUT /admin/design-formula`, `GET /admin/design-formula/history`; corresponding `/admin/assembly-formula` routes; `POST /admin/email/test` | Formula config/history and an API-only admin email send test. |
 
-`/admin/email/test` exists as an API route; the current Admin page does not provide a delivery-test button or a persistent delivery log.
+`/admin/email/test` exists as an API route; the current Admin page does not provide a delivery-test button. Request-level history is available at `GET /eto-requests/:id/email-history` and Audit Trail → Email.
 
 ## 8. Database model and audit
 
@@ -217,12 +217,12 @@ The request row stores the **current** state; the transition table tells how it 
 
 | Trigger | Processing |
 |---|---|
-| Successful stage transition | After the HTTP response, `sendTransitionEmails` attempts Resend delivery: Draft → ART Review to ART users; Won to submitter + previous assignee; other stage changes to submitter + new assignee. Missing configuration, recipients, or provider failure does not roll back the transition. |
-| API server startup and 08:00 UTC daily | `runReminders` finds assigned, nonterminal requests inactive for 5 days in Engineering or 3 days elsewhere; it attempts an email to the current owner and updates `lastRemindedAt` only after the sender accepts it. Unassigned requests have no owner reminder. |
+| Successful stage transition | After the HTTP response, `sendTransitionEmails` attempts Microsoft Graph delivery for enabled notification types. Missing configuration, recipients, or provider failure does not roll back the transition. |
+| API server startup and 08:00 UTC daily | `runReminders` finds assigned, nonterminal requests inactive for 5 days in Engineering or 3 days elsewhere; it attempts a Microsoft Graph email to the current owner and updates `lastRemindedAt` only after Graph accepts it. Unassigned requests have no owner reminder. |
 | API server startup and every two minutes | `runAttachmentIndexing` attempts a bounded batch of text extraction/OCR without delaying upload or workflow requests. |
 | Dashboard load | Stage/open/won/lost/declined counts, declines by ART stage, overdue count, and the signed-in user's assignment queue are queried from current requests and transition history. Engineering overdue threshold is 5 days; other active stages use 3. |
 
-Average time per stage is currently returned as an empty metric. The legacy “more info” count does **not** count current backward returns. Neither is a reliable current-process KPI. There is no persistent email delivery history. Email requires configured Resend sender credentials; the optional CRM connection only checks read-only connectivity and has no two-way D365 flow.
+Average time per stage is currently returned as an empty metric. The legacy “more info” count does **not** count current backward returns. Neither is a reliable current-process KPI. New email events are persisted in `crm.eto_email_delivery_events`: one row per originating action, with the combined recipients and per-message outcomes. The record is inserted before sending; Graph acceptance, failure, partial acceptance, missing recipients and pending/unconfirmed outcomes are distinguished. History is not backfilled, disabled notifications create no records, and email bodies or credentials are not retained. Email requires Microsoft Entra app credentials, a configured Graph sender mailbox with `Mail.Send` permission, and the published app URL for request links; the optional CRM connection only checks read-only connectivity and has no two-way D365 flow.
 
 ## 11. Failure and consistency boundaries
 

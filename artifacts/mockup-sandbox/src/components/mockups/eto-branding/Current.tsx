@@ -93,9 +93,7 @@ function Sidebar() {
           <div className="truncate font-medium text-white">Jordan Mitchell</div>
           <div className="mt-0.5 text-xs capitalize text-slate-400">SuperUser</div>
         </div>
-        {!window.location.search.includes("embedded=1") && (
         <button className="flex w-full items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"><LogOut className="h-4 w-4" /> Sign out</button>
-         )} 
       </div>
     </aside>
   );

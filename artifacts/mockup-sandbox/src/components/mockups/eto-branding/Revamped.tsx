@@ -54,13 +54,7 @@ function Sidebar({ active, onNavigate }: { active: string; onNavigate: (item: st
   return <aside className="eto-side">
     <div className="eto-brand"><div className="eto-mark">E</div><div><span className="eto-brand-name">ETO Tracker</span><span className="eto-brand-sub">Digital Transformation</span></div></div>
     <nav className="eto-nav" aria-label="Application navigation"><div className="eto-nav-label">Workspace</div>{links.map(([label, Icon]) => <a key={label} href={`#${label.toLowerCase().replace(" ", "-")}`} onClick={() => onNavigate(label)} className={`eto-nav-link ${active === label ? "is-active" : ""}`}><Icon size={17} strokeWidth={1.8} />{label}</a>)}</nav>
-    <div className="eto-side-foot"><div className="eto-role-box"><div className="eto-role-label"><Eye size={14} />View as role</div>
-    <select className="eto-role-select" aria-label="View as role" defaultValue="SuperUser"><option>SuperUser</option><option>Engineering</option><option>Production</option></select><p className="eto-role-note">Uses the selected role&apos;s real permissions.</p></div><div className="eto-user"><div className="eto-user-name">Jordan Mitchell</div><div className="eto-user-role">SuperUser</div></div>
-    {!window.location.search.includes("embedded=1") && (
-    <button className="eto-signout" onClick={() => onNavigate("Signed out")}><LogOut size={15} />Sign out</button>
-    )}
-    </div>
-    
+    <div className="eto-side-foot"><div className="eto-role-box"><div className="eto-role-label"><Eye size={14} />View as role</div><select className="eto-role-select" aria-label="View as role" defaultValue="SuperUser"><option>SuperUser</option><option>Engineering</option><option>Production</option></select><p className="eto-role-note">Uses the selected role&apos;s real permissions.</p></div><div className="eto-user"><div className="eto-user-name">Jordan Mitchell</div><div className="eto-user-role">SuperUser</div></div><button className="eto-signout" onClick={() => onNavigate("Signed out")}><LogOut size={15} />Sign out</button></div>
   </aside>;
 }
 

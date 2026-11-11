@@ -159,29 +159,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </p>
             </div>
           )}
-          {!window.location.search.includes("embedded=1") && (
-            <div className="text-slate-300 text-sm mb-3">
-              <div className="font-medium text-white truncate">
-                {[user?.firstName, user?.lastName]
-                  .filter(Boolean)
-                  .join(" ") || user?.email}
-              </div>
-
-              <div className="text-slate-400 capitalize text-xs mt-0.5">
-                {ROLE_LABELS[me?.role ?? ""] ?? me?.role ?? ""}
-              </div>
+          <div className="text-slate-300 text-sm mb-3">
+            <div className="font-medium text-white truncate">
+              {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email}
             </div>
-          )}
-
-          {!window.location.search.includes("embedded=1") && (
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors w-full"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
-          )}
+            <div className="text-slate-400 capitalize text-xs mt-0.5">
+              {ROLE_LABELS[me?.role ?? ""] ?? me?.role ?? ""}
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors w-full"
+          >
+            <LogOut className="h-4 w-4" /> Sign out
+          </button>
         </div>
     </>
   );

@@ -22,6 +22,29 @@ tags:
     description: Object storage upload and serving endpoints.
 
 paths:
+  /eto-requests/{id}/email-history:
+    get:
+      operationId: listEmailHistory
+      tags: [eto-requests]
+      summary: List notification events with grouped recipients and Graph acceptance status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Notification events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmailDeliveryEvent"
+        "400":
+          description: Invalid request ID
+        "404":
+          description: Request not found
   /admin/email-notifications:
     put:
       operationId: updateAllEmailNotifications
@@ -1153,6 +1176,37 @@ paths:
 
 components:
   schemas:
+    EmailDeliveryMessage:
+      type: object
+      required: [name, subject, recipients, status]
+      properties:
+        name: { type: string }
+        subject: { type: string }
+        recipients:
+          type: array
+          items: { type: string }
+        status:
+          type: string
+          enum: [pending, accepted, failed, skipped]
+    EmailDeliveryEvent:
+      type: object
+      required: [id, etoRequestId, eventName, recipients, messages, status, createdAt, completedAt]
+      properties:
+        id: { type: integer }
+        etoRequestId: { type: integer }
+        eventName: { type: string }
+        recipients:
+          type: array
+          items: { type: string }
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailDeliveryMessage"
+        status:
+          type: string
+          enum: [pending, accepted, partial, failed, skipped]
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, "null"], format: date-time }
     EmailNotificationInput:
       type: object
       required: [enabled]

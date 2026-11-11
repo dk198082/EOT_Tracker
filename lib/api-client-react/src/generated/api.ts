@@ -38,6 +38,7 @@ import type {
   DesignFormulaInput,
   DesignFormulaSettings,
   DetailChange,
+  EmailDeliveryEvent,
   EmailNotificationInput,
   EmailNotifications,
   EngineeringOutput,
@@ -100,6 +101,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListEmailHistoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/eto-requests/${id}/email-history`
+}
+
+/**
+ * @summary List notification events with grouped recipients and Graph acceptance status
+ */
+export const listEmailHistory = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<EmailDeliveryEvent[]> => {
+
+  return customFetch<EmailDeliveryEvent[]>(getListEmailHistoryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmailHistoryQueryKey = (id: number,) => {
+    return [
+    `/api/eto-requests/${id}/email-history`
+    ] as const;
+    }
+
+
+export const getListEmailHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listEmailHistory>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmailHistoryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmailHistory>>> = ({ signal }) => listEmailHistory(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmailHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmailHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listEmailHistory>>>
+export type ListEmailHistoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary List notification events with grouped recipients and Graph acceptance status
+ */
+
+export function useListEmailHistory<TData = Awaited<ReturnType<typeof listEmailHistory>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmailHistoryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getUpdateAllEmailNotificationsUrl = () => {
 

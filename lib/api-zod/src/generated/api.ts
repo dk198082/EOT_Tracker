@@ -9,6 +9,31 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List notification events with grouped recipients and Graph acceptance status
+ */
+export const ListEmailHistoryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListEmailHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "etoRequestId": zod.number().int(),
+  "eventName": zod.string(),
+  "recipients": zod.array(zod.string()),
+  "messages": zod.array(zod.object({
+  "name": zod.string(),
+  "subject": zod.string(),
+  "recipients": zod.array(zod.string()),
+  "status": zod.enum(['pending', 'accepted', 'failed', 'skipped'])
+})),
+  "status": zod.enum(['pending', 'accepted', 'partial', 'failed', 'skipped']),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})
+export const ListEmailHistoryResponse = zod.array(ListEmailHistoryResponseItem)
+
+
+/**
  * @summary Enable or disable all email notifications atomically
  */
 export const UpdateAllEmailNotificationsBody = zod.object({

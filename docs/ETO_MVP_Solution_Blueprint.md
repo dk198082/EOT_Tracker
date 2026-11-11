@@ -66,7 +66,7 @@ ART independently includes or skips Engineering and Production. Backward returns
 
 ## 6. Email Notification Behavior
 
-Email templates link back to the record and include the ETO number in the subject. Resend credentials/sender configuration are required; skipped or failed delivery does not block the transition. There is no durable delivery log.
+Email templates link back to the record and include the ETO number in the subject. Microsoft Entra app credentials and a Graph sender mailbox with `Mail.Send` permission are required; skipped or failed delivery does not block the transition. Each request's Audit Trail → Email shows persistent, event-grouped send history with all recipients, message subjects and Graph acceptance outcomes. Disabled notifications are not logged, and earlier emails cannot be reconstructed.
 
 | Trigger | Recipients |
 |---|---|
@@ -93,7 +93,7 @@ The dashboard does **not** yet calculate average time per stage. Its legacy "mor
 
 - **Microsoft Entra ID (OIDC)** authenticates users. App records hold roles; admins can pre-create users and set roles in the Users tab, with identity linking on first sign-in.
 - **Private Replit Object Storage** holds optional attachments; uploads/downloads are authenticated, with signed links or a safe inline preview endpoint.
-- **Resend** sends stage notifications and daily-sweep inactivity reminders only when configured.
+- **Microsoft Graph** sends stage notifications and daily-sweep inactivity reminders only when configured.
 - **D365 remains manual**: the app displays the ETO number for manual use, and Won is recorded in-app. An optional read-only Azure CRM database connection is not two-way D365/Dataverse workflow integration.
 
 ---
@@ -111,7 +111,7 @@ The dashboard does **not** yet calculate average time per stage. Its legacy "mor
 | Historical ETO bulk import | Targeted user/submitter imports exist, but a general historical ETO import is not established |
 | Quote-document generation | Manual process is acceptable at MVP scale |
 | Accurate average time-in-stage and current return-loop metrics | Current dashboard does not compute these |
-| Persistent email delivery history | Sending is attempted, but admins cannot review a durable delivery log |
+| Inbox-delivery confirmation | Send attempts are recorded per request, but inbox delivery is not confirmed |
 
 ---
 
