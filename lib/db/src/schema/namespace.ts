@@ -8,6 +8,7 @@ export const crmSchema = pgSchema(ETO_SCHEMA);
 export const ETO_TABLE_NAMES = {
   users: "eto_users",
   email_notification_settings: "eto_email_notification_settings",
+  email_delivery_events: "eto_email_delivery_events",
   sessions: "eto_sessions",
   eto_requests: "eto_requests",
   stage_transitions: "eto_stage_transitions",

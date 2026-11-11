@@ -1,5 +1,6 @@
 export * from "./users";
 export * from "./email_notifications";
+export * from "./email_delivery_events";
 export * from "./review_assignment_defaults";
 export * from "./auth";
 export * from "./eto_requests";
