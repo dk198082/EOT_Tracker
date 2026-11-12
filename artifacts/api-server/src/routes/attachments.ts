@@ -14,6 +14,7 @@ import type { RequestHandler } from "express";
 import { archiveStore } from "../lib/shared-merge/database";
 
 const objectStorageService = new ObjectStorageService();
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const router = Router({ mergeParams: true });
 
@@ -137,23 +138,66 @@ router.post("/", requireAuth, async (req, res, next) => {
 
   // Verify the storageKey was minted by this user for this ETO
   const consume = consumePendingUpload(parsed.data.storageKey, user.id, id);
-  if (!consume.ok) {
-    res.status(422).json({ error: consume.reason });
-    return;
+    if (!consume.ok) {
+      res.status(422).json({ error: consume.reason });
+      return;
+    }
+
+    if (
+      parsed.data.fileSize !== consume.upload.fileSize ||
+      (parsed.data.contentType ?? "application/octet-stream") !== consume.upload.contentType
+    ) {
+      res.status(422).json({ error: "Uploaded file metadata does not match the authorized upload." });
+      return;
   }
 
   try {
-    const [attachment] = await db
-      .insert(attachmentsTable)
-      .values({
-        etoRequestId: id,
-        uploaderId: user.id,
-        filename: parsed.data.filename,
-        storageKey: parsed.data.storageKey,
-        contentType: parsed.data.contentType ?? null,
-        fileSize: parsed.data.fileSize ?? null,
-      })
-      .returning();
+
+      // Verify the actual uploaded Azure Blob
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        parsed.data.storageKey,
+      );
+
+      const [blobMetadata] = await objectFile.getMetadata();
+
+      const actualSize = blobMetadata.size;
+      const actualContentType = blobMetadata.contentType;
+
+      if (
+        actualSize === undefined ||
+        actualSize <= 0 ||
+        actualSize > MAX_FILE_SIZE ||
+        actualSize !== consume.upload.fileSize
+      ) {
+        await objectFile.delete();
+        res.status(422).json({
+          error: "Uploaded file size is invalid or exceeds the 50 MB limit.",
+        });
+        return;
+      }
+
+      if (actualContentType !== consume.upload.contentType) {
+        await objectFile.delete();
+        res.status(422).json({
+          error: "Uploaded file content type does not match the authorized upload.",
+        });
+        return;
+      }
+
+      // 2. Database insertion comes AFTER verification
+      const [attachment] = await db
+        .insert(attachmentsTable)
+        .values({
+          etoRequestId: id,
+          uploaderId: user.id,
+          filename: parsed.data.filename,
+          storageKey: parsed.data.storageKey,
+          contentType: parsed.data.contentType ?? null,
+          fileSize: parsed.data.fileSize ?? null,
+        })
+        .returning();
+
+      // Keep your existing response code here
 
     res.status(201).json({
       id: attachment.id,

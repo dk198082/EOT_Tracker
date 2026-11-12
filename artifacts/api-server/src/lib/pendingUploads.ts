@@ -29,7 +29,7 @@ export function recordPendingUpload(objectPath: string, data: Omit<PendingUpload
 }
 
 export type ConsumeResult =
-  | { ok: true }
+  | { ok: true; upload: PendingUpload; }
   | { ok: false; reason: string };
 
 /**
@@ -56,5 +56,5 @@ export function consumePendingUpload(
   if (entry.etoRequestId !== etoRequestId) {
     return { ok: false, reason: 'Upload was minted for a different ETO request' };
   }
-  return { ok: true };
+  return { ok: true, upload: entry };
 }

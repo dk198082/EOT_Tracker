@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@azure/identity": "^4.14.1",
+    "@azure/storage-blob": "^12.34.0",
     "@google-cloud/storage": "^7.21.0",
     "@napi-rs/canvas": "^1.0.8",
     "@workspace/api-zod": "workspace:*",

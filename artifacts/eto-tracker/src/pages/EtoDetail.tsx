@@ -529,7 +529,11 @@ export default function EtoDetail({ id }: EtoDetailProps) {
                   return {
                     method: "PUT" as const,
                     url: uploadURL,
-                    headers: { "Content-Type": file.type ?? "application/octet-stream" },
+                    // headers: { "Content-Type": file.type ?? "application/octet-stream" },
+                    headers: {
+                              "Content-Type": file.type ?? "application/octet-stream",
+                              "x-ms-blob-type": "BlockBlob",
+                            },
                   };
                 }}
                 onComplete={(result) => {

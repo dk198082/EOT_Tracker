@@ -3,9 +3,12 @@ import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
-import type { File } from "@google-cloud/storage";
 import { OfficeParser, type SupportedFileType } from "officeparser";
-import { ObjectNotFoundError, ObjectStorageService } from "./objectStorage";
+import {
+  ObjectNotFoundError,
+  ObjectStorageService,
+  type AzureObjectFile,
+} from "./objectStorage";
 
 const MAX_EXTRACT_BYTES = 20 * 1024 * 1024;
 const MAX_SEARCH_CHARS = 500_000;
@@ -78,7 +81,7 @@ async function recognizeImageInSubprocess(buffer: Buffer, extension: string): Pr
   }
 }
 
-async function downloadWithLimit(file: File): Promise<Buffer> {
+async function downloadWithLimit(file: AzureObjectFile): Promise<Buffer> {
   const [metadata] = await file.getMetadata();
   const trustedSize = Number(metadata.size);
   if (Number.isFinite(trustedSize) && trustedSize > MAX_EXTRACT_BYTES) {
