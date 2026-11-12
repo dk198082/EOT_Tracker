@@ -20,4 +20,4 @@
 - [Shared dataset policy](shared-dataset-policy.md) — reconcile into one crm.eto_* dataset; no separate permanent production table set.
 - [Shared cutover clients](shared-cutover-clients.md) — never refresh an old open form into a new remapped identity; reject it and require reopening the intended record.
 - [Portal color safety](portal-color-safety.md) — verify computed popup colors; semantic theme utilities can render transparent until the shared palette is repaired.
-- [Email notification policy](email-notification-policy.md) — independent Admin switches start off; recipient rules, final-quote contents and published links.
+- [Email notification policy](email-notification-policy.md) — recipient rules, independent off-by-default switches, event-grouped audit and Graph acceptance semantics.

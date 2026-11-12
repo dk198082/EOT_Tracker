@@ -27,3 +27,4 @@ channel = "stable-25_05"
 [userenv.shared]
 APP_BASE_URL = "https://process-brief-generator.replit.app"
 ADMIN_CONSOLE_APP_NAME = "ETO"
+GRAPH_SENDER_EMAIL = "no-reply@tiniusolsen.com"
