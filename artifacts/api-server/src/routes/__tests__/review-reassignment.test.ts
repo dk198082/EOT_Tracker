@@ -79,7 +79,7 @@ describe("department review reassignment", () => {
     }));
     expect(state.queries[0].for).toHaveBeenCalledWith("update");
     expect(state.queries[1].for).toHaveBeenCalledWith("share");
-    expect(new PgDialect().sqlToQuery(state.queries[1].where.mock.calls[0][0]).params).toEqual([3, "engineering"]);
+    expect(new PgDialect().sqlToQuery(state.queries[1].where.mock.calls[0][0]).params).toEqual([3, "engineering", "eng-prod"]);
   });
 
   it("updates Production's persistent assignee but leaves the sticky Engineer unchanged", async () => {
@@ -88,7 +88,7 @@ describe("department review reassignment", () => {
     expect(response.status).toBe(200);
     expect(state.set).toHaveBeenCalledWith({ assigneeId: 3, productionAssigneeId: 3, updatedAt: expect.any(Date) });
     expect(state.values.mock.calls[0][0].changes[0].field).toBe("Assigned Production");
-    expect(new PgDialect().sqlToQuery(state.queries[1].where.mock.calls[0][0]).params).toEqual([3, "production"]);
+    expect(new PgDialect().sqlToQuery(state.queries[1].where.mock.calls[0][0]).params).toEqual([3, "production", "eng-prod"]);
   });
 
   it.each(["sales", "art", "production", "admin"])("blocks %s from Engineering reassignment", async (role) => {
@@ -98,6 +98,14 @@ describe("department review reassignment", () => {
   });
   it("blocks Engineering from Production reassignment", async () => {
     expect((await post(productionBody)).status).toBe(403);
+  });
+  it.each(["engineering-review", "production-review"])("allows Eng/Prod to reassign %s without advancing", async (stage) => {
+    state.role = "eng-prod";
+    state.current.stage = stage;
+    const response = await post({ ...engineeringBody, expectedStage: stage });
+    expect(response.status).toBe(200);
+    expect(response.body.stage).toBe(stage);
+    expect(state.set.mock.calls[0][0]).not.toHaveProperty("stage");
   });
   it.each(["engineering-review", "production-review"])("allows SuperUser in %s", async (stage) => {
     state.role = "superuser"; state.current.stage = stage;

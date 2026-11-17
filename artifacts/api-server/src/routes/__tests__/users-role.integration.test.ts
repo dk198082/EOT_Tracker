@@ -7,7 +7,7 @@ import type { User } from "@workspace/db";
 let actor: User;
 
 vi.mock("../../middlewares/requireAuth", () => {
-  const mockRequireAuth = (
+  const mockAuth = (
     _req: express.Request,
     res: express.Response,
     next: express.NextFunction,
@@ -16,10 +16,7 @@ vi.mock("../../middlewares/requireAuth", () => {
     res.locals.actualDbUser = actor;
     next();
   };
-  return {
-    requireAuth: mockRequireAuth,
-    requireAuthAllowNone: mockRequireAuth,
-  };
+  return { requireAuth: mockAuth, requireAuthAllowNone: mockAuth };
 });
 
 import { db, usersTable } from "@workspace/db";

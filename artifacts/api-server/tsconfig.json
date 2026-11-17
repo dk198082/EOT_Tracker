@@ -11,6 +11,7 @@
   "exclude": [
     "src/lib/__tests__/price-calculation.ui.test.ts",
     "src/lib/__tests__/review-step-dates.ui.test.ts",
+    "src/lib/__tests__/field-help.ui.test.ts",
     "src/lib/__tests__/money.test.ts"
   ],
   "references": [

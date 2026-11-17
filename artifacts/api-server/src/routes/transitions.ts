@@ -16,6 +16,7 @@ import { and, eq, asc, desc, sql, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { SubmitTransitionBody } from "@workspace/api-zod";
 import { validateAndAdvance, type Decision } from "../lib/workflow";
+import { matchesRole } from "../lib/roles";
 import { ETO_STAGES } from "@workspace/db";
 import type { User, EtoStage } from "@workspace/db";
 import { parseIntParam } from "../lib/params";
@@ -372,7 +373,7 @@ router.post("/", requireAuth, async (req, res, next) => {
       if (newProductionAssignee !== null) {
         const [productionReviewer] = await db.select({ id: usersTable.id, role: usersTable.role })
           .from(usersTable).where(eq(usersTable.id, newProductionAssignee)).limit(1);
-        if (!productionReviewer || productionReviewer.role !== "production") {
+        if (!productionReviewer || !matchesRole(productionReviewer.role, "production")) {
           res.status(422).json({ error: "Assigned Production reviewer must have the 'production' role" });
           return;
         }
@@ -440,7 +441,7 @@ router.post("/", requireAuth, async (req, res, next) => {
       }
       const [target] = await db.select({ id: usersTable.id, role: usersTable.role })
         .from(usersTable).where(eq(usersTable.id, newAssigneeId)).limit(1);
-      if (!target || target.role !== role) {
+      if (!target || !matchesRole(target.role, role)) {
         res.status(422).json({ error: `Assigned reviewer must have the '${role}' role` });
         return;
       }

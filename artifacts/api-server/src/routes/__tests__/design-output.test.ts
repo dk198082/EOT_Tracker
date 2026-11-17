@@ -37,8 +37,8 @@ vi.mock("../../middlewares/requireAuth", () => ({
 import outputsRouter from "../outputs";
 
 describe("Engineering Output calculation snapshots", () => {
-  it("keeps the original formula when design hours are edited after Admin changes settings", async () => {
-    activeRole = "engineering";
+  it.each(["engineering", "eng-prod"])("keeps the original formula when %s edits design hours after Admin changes settings", async (role) => {
+    activeRole = role;
     const existing = {
       id: 9,
       etoRequestId: 42,
@@ -99,8 +99,8 @@ describe("Engineering Output calculation snapshots", () => {
 
 
 describe("Production Output values", () => {
-  it("saves new fields without changing historical week-based values", async () => {
-    activeRole = "production";
+  it.each(["production", "eng-prod"])("allows %s to save new fields without changing historical week-based values", async (role) => {
+    activeRole = role;
     let row: Record<string, unknown> = {
       id: 11,
       etoRequestId: 42,

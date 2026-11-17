@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<string, string> = {
   art: "ART",
   engineering: "Engineering",
   production: "Production",
+  "eng-prod": "Eng/Prod",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -152,6 +153,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <SelectItem value="art">ART</SelectItem>
                   <SelectItem value="engineering">Engineering</SelectItem>
                   <SelectItem value="production">Production</SelectItem>
+                  <SelectItem value="eng-prod">Eng/Prod</SelectItem>
                 </SelectContent>
               </Select>
               <p className="mt-2 text-[11px] leading-4 text-slate-400">

@@ -35,12 +35,13 @@ const STAGES = [
   { value: "abandoned", label: "Abandoned" },
 ];
 
-// User roles: sales | art | engineering | production | admin | superuser
+// User roles: sales | art | engineering | production | eng-prod | admin | superuser
 const ROLE_LABELS: Record<string, string> = {
   sales: "Sales",
   art: "ART",
   engineering: "Engineering",
   production: "Production",
+  "eng-prod": "Eng/Prod",
   admin: "Admin",
   superuser: "SuperUser",
 };

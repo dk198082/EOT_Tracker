@@ -56,7 +56,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatMoney, formatHistoryMoney, moneyInputValue, isWholeMoney, isWholeBudget } from "@/lib/money";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { HelpLabel as Label, FieldHelp } from "@/components/FieldHelp";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -337,7 +337,7 @@ export default function EtoDetail({ id }: EtoDetailProps) {
             <EditableEngineeringOutput
               output={engOutput}
               etoId={id}
-              canEdit={!eto.archived && (userRole === "engineering" || userRole === "art" || userRole === "superuser")}
+              canEdit={!eto.archived && (userRole === "engineering" || userRole === "eng-prod" || userRole === "art" || userRole === "superuser")}
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: getGetEngineeringOutputQueryKey(id) });
                 qc.invalidateQueries({ queryKey: getListDetailChangesQueryKey(id) });
@@ -350,7 +350,7 @@ export default function EtoDetail({ id }: EtoDetailProps) {
             <EditableProductionOutput
               output={prodOutput}
               etoId={id}
-              canEdit={!eto.archived && (userRole === "production" || userRole === "art" || userRole === "superuser")}
+              canEdit={!eto.archived && (userRole === "production" || userRole === "eng-prod" || userRole === "art" || userRole === "superuser")}
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: getGetProductionOutputQueryKey(id) });
                 qc.invalidateQueries({ queryKey: getListDetailChangesQueryKey(id) });
@@ -446,7 +446,11 @@ export default function EtoDetail({ id }: EtoDetailProps) {
           {/* Workflow Actions */}
           <Card className="order-1">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-slate-800">Workflow Actions</CardTitle>
+              <CardTitle className="text-base font-semibold text-slate-800">
+                Workflow Actions
+                {eto.stage === "engineering-review" && <FieldHelp field="Workflow Actions" form="engineering" />}
+                {eto.stage === "production-review" && <FieldHelp field="Workflow Actions" form="production" />}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {eto.archived && <p className="text-sm text-slate-500">Archived ETOs have no workflow or split actions.</p>}
@@ -496,6 +500,7 @@ export default function EtoDetail({ id }: EtoDetailProps) {
               <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
                 <Paperclip className="h-4 w-4" />
                 Attachments
+                <FieldHelp field="Attachments" form="request" />
                 {attachments && attachments.length > 0 && (
                   <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                     {attachments.length}
@@ -529,11 +534,7 @@ export default function EtoDetail({ id }: EtoDetailProps) {
                   return {
                     method: "PUT" as const,
                     url: uploadURL,
-                    // headers: { "Content-Type": file.type ?? "application/octet-stream" },
-                    headers: {
-                              "Content-Type": file.type ?? "application/octet-stream",
-                              "x-ms-blob-type": "BlockBlob",
-                            },
+                    headers: { "Content-Type": file.type ?? "application/octet-stream" },
                   };
                 }}
                 onComplete={(result) => {
@@ -962,13 +963,13 @@ function WorkflowActions({
     );
   }
 
-  if (stage === "engineering-review" && (isSuperUser || userRole === "engineering")) {
+  if (stage === "engineering-review" && (isSuperUser || userRole === "engineering" || userRole === "eng-prod")) {
     stageActions = engineeringOutputLoading
       ? <Skeleton className="h-24 w-full" />
       : <EngineeringActions onTransition={onTransition} isPending={isPending} includeProductionReview={eto.includeProductionReview} entity={eto.entity} productionAssigneeId={eto.productionAssigneeId} previousOutput={engineeringOutput} reassign={<ReassignReview eto={eto} department="engineering" disabled={isPending} />} />;
   }
 
-  if (stage === "production-review" && (isSuperUser || userRole === "production")) {
+  if (stage === "production-review" && (isSuperUser || userRole === "production" || userRole === "eng-prod")) {
     stageActions = productionOutputLoading
       ? <Skeleton className="h-24 w-full" />
       : <ProductionActions onTransition={onTransition} isPending={isPending} includeEngineeringReview={eto.includeEngineeringReview} previousOutput={productionOutput} reassign={<ReassignReview eto={eto} department="production" disabled={isPending} />} />;
@@ -1975,7 +1976,7 @@ function EditableRequestDetails({
   function handleSave() {
     if (!canEdit) return;
     if (!isWholeBudget(form.budgetRange)) {
-      toast.error("Budget Range must contain whole-number amounts, such as 1000 - 2000");
+      toast.error("Customer Budget must contain whole-number amounts, such as 1000 - 2000");
       return;
     }
     update(
@@ -2067,8 +2068,8 @@ function EditableRequestDetails({
             {eto.resultsRequired && <DetailField label="Results Required" value={eto.resultsRequired} fullWidth />}
             {eto.relevantStandards && <DetailField label="Relevant Standard" value={eto.relevantStandards} fullWidth />}
             {eto.customDetails && <DetailField label="Custom Requests" value={eto.customDetails} fullWidth />}
-            {eto.budgetRange && <DetailField label="Budget Range" value={formatMoney(eto.budgetRange, eto.budgetCurrency ?? "USD")} />}
-            {eto.acceptableLeadTime && <DetailField label="Acceptable Lead Time (weeks)" value={eto.acceptableLeadTime} />}
+            {eto.budgetRange && <DetailField label="Customer Budget" value={formatMoney(eto.budgetRange, eto.budgetCurrency ?? "USD")} />}
+            {eto.acceptableLeadTime && <DetailField label="Customer Lead Time" value={eto.acceptableLeadTime} />}
             {eto.similarParts && <DetailField label="Similar Parts / Machines" value={eto.similarParts} fullWidth />}
             <DetailField label="Entity" value={eto.entity ?? "Not selected"} />
             <DetailField label="Submitted By" value={eto.submittedByName ?? ""} />
@@ -2205,7 +2206,7 @@ function EditableRequestDetails({
             <div className="space-y-1 sm:col-span-2"><Label>Relevant Standard</Label><Input {...f("relevantStandards")} /></div>
             <div className="space-y-1 sm:col-span-2"><Label>Custom Requests</Label><Textarea rows={3} {...f("customDetails")} /></div>
             <div className="space-y-1">
-              <Label>Budget Range</Label>
+              <Label>Customer Budget</Label>
               <div className="flex overflow-hidden rounded-md border border-input bg-background shadow-sm focus-within:ring-1 focus-within:ring-ring">
                 <MoneyInput range currency={form.budgetCurrency}
                   className="h-9 rounded-none border-0 shadow-none focus-visible:ring-0"
@@ -2218,7 +2219,7 @@ function EditableRequestDetails({
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Acceptable Lead Time (weeks)</Label>
+              <Label>Customer Lead Time</Label>
               <Input {...f("acceptableLeadTime")} />
             </div>
             <div className="space-y-1 sm:col-span-2"><Label>Similar Parts / Machines</Label><Input {...f("similarParts")} /></div>
@@ -2662,7 +2663,9 @@ function DetailField({
 }) {
   return (
     <div className={fullWidth ? "sm:col-span-2" : ""}>
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-0.5">{label}</p>
+      <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-0.5">
+        {label}<FieldHelp field={label} />
+      </div>
       <p className={`text-slate-800 ${capitalize ? "capitalize" : ""} ${className}`}>{value}</p>
     </div>
   );

@@ -10,11 +10,10 @@ import { logger } from "./lib/logger";
 import { getTrustedOrigins } from "./lib/trustedOrigins";
 
 const app: Express = express();
-// --- AZURE DEPLOYMENT ---------------------------------------------------
-// Azure App Service / Container Apps sit the container behind a load
-// balancer/reverse proxy; trusting it so req.protocol/req.secure and
-// secure cookies reflect the real (HTTPS) client request, not the
-// container's own plain-HTTP listener.
+
+// AZURE: Azure App Service/Container Apps terminates TLS at a reverse proxy
+// in front of the container and forwards plain HTTP, setting X-Forwarded-*
+// headers. Without this, req.secure/req.protocol would read "http".
 app.set("trust proxy", 1);
 
 app.use(
@@ -62,27 +61,28 @@ app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);
 
 app.use("/api", router);
+// AZURE: none of the mounted routers above 404 an unmatched path themselves,
+// so without this, an unknown /api/* path would fall through into the SPA
+// static fallback below (once STATIC_DIR serving is added for Azure) and
+// wrongly return 200 with index.html.
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
 
-// --- AZURE DEPLOYMENT ---------------------------------------------------
-// Optional single-service mode: if STATIC_DIR points at the built frontend
-// (artifacts/eto-tracker/dist/public), this API server also serves it, so
-// the whole app runs as ONE Azure App Service / Container Apps instance on
-// ONE origin. That keeps the session cookie same-site/same-origin and
-// avoids needing a second Azure resource. Unset in local dev (the Vite dev
-// server serves the frontend on its own port instead) and set by
-// ./Dockerfile / AZURE_DEPLOYMENT.md in production.
+// AZURE: on Replit, the frontend (artifacts/eto-tracker) and this API are two
+// separate deployed services. On Azure this ships as one container, so this
+// server also serves the built frontend as static files, with an SPA
+// fallback for client-side routes. Unset in local dev; set by the Dockerfile
+// in production.
 const staticDir = process.env.STATIC_DIR;
 if (staticDir) {
-  const resolvedStaticDir = path.resolve(staticDir);
-  if (!fs.existsSync(path.join(resolvedStaticDir, "index.html"))) {
-    throw new Error(
-      `STATIC_DIR is set to "${resolvedStaticDir}" but no index.html was found there. ` +
-        "Build the frontend first (see AZURE_DEPLOYMENT.md).",
-    );
+  const indexHtml = path.join(staticDir, "index.html");
+  if (!fs.existsSync(indexHtml)) {
+    throw new Error(`STATIC_DIR is set to "${staticDir}" but "${indexHtml}" does not exist. Did the frontend build run?`);
   }
-  app.use(express.static(resolvedStaticDir));
-  app.get(/^(?!\/api\/).*/, (_req, res) => {
-    res.sendFile(path.join(resolvedStaticDir, "index.html"));
+  app.use(express.static(staticDir));
+  app.get(/.*/, (_req, res) => {
+    res.sendFile(indexHtml);
   });
 }
 

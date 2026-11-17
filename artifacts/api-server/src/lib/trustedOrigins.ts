@@ -16,18 +16,13 @@ export function getTrustedOrigins(
     origins.add(domain.startsWith("http") ? new URL(domain).origin : `https://${domain}`);
   }
 
-  // --- AZURE DEPLOYMENT ---------------------------------------------------
-  // REPLIT_DEV_DOMAIN/REPLIT_DOMAINS are never set on Azure. CORS_ORIGIN is
-  // this app's equivalent for a non-Replit host: a comma-separated allowlist
-  // of exact origins (e.g. "https://eto-tracker.azurewebsites.net"). Only
-  // needed if the frontend is ever split onto its own origin — the default
-  // single-container STATIC_DIR deployment (see ./Dockerfile /
-  // AZURE_DEPLOYMENT.md) is same-origin, so the browser never sends a
-  // cross-origin request in the first place and this stays empty.
-  for (const rawDomain of (env.CORS_ORIGIN ?? "").split(",")) {
-    const domain = rawDomain.trim();
-    if (!domain) continue;
-    origins.add(domain.startsWith("http") ? new URL(domain).origin : `https://${domain}`);
+  // AZURE: only needed if the frontend is deployed on a separate origin from
+  // this API (not the default single-container deployment described in
+  // AZURE_DEPLOYMENT.md, where same-origin requests never hit CORS at all).
+  for (const rawOrigin of (env.CORS_ORIGIN ?? "").split(",")) {
+    const origin = rawOrigin.trim();
+    if (!origin) continue;
+    origins.add(new URL(origin).origin);
   }
 
   return origins;

@@ -23,8 +23,8 @@ export function ReviewAssignmentDefaults({ users, entity }: { users: User[]; ent
     });
   }, [data]);
 
-  const engineers = users.filter((u) => u.role === "engineering");
-  const productionUsers = users.filter((u) => u.role === "production");
+  const engineers = users.filter((u) => u.role === "engineering" || u.role === "eng-prod");
+  const productionUsers = users.filter((u) => u.role === "production" || u.role === "eng-prod");
   const valid = selection !== null &&
     engineers.some((u) => u.id === selection.engineeringUserId) &&
     productionUsers.some((u) => u.id === selection.productionUserId);

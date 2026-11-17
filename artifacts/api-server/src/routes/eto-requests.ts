@@ -33,7 +33,7 @@ function isOverdue(stage: string, updatedAt: string | Date): boolean {
 import { requireAuth } from "../middlewares/requireAuth";
 import { CreateEtoRequestBody, SplitEtoRequestBody, ReassignEtoReviewBody } from "@workspace/api-zod";
 import type { User } from "@workspace/db";
-import { hasRole } from "../lib/roles";
+import { hasRole, departmentRoles } from "../lib/roles";
 import { parseIntParam } from "../lib/params";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { getSplitFamilyMetadata } from "../lib/splitFamily";
@@ -498,7 +498,7 @@ router.post("/", requireAuth, async (req, res, next) => {
     return;
   }
   if (!isWholeBudget(parsed.data.budgetRange)) {
-    res.status(422).json({ error: "Budget Range must contain whole-number amounts (for example, 1000 - 2000)" });
+    res.status(422).json({ error: "Customer Budget must contain whole-number amounts (for example, 1000 - 2000)" });
     return;
   }
 
@@ -787,7 +787,7 @@ router.post("/:id/reassign", requireAuth, async (req, res, next) => {
         return { status: 409, error: "The stage or assignee changed. Reopen Re-Assign and try again." } as const;
       }
       const [selected] = await tx.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable)
-        .where(and(eq(usersTable.id, body.assigneeId), eq(usersTable.role, department)))
+        .where(and(eq(usersTable.id, body.assigneeId), inArray(usersTable.role, departmentRoles(department))))
         .limit(1).for("share");
       if (!selected) {
         return { status: 422, error: `Select a user in the ${department} department` } as const;
@@ -859,7 +859,7 @@ router.patch("/:id", requireAuth, async (req, res, next) => {
   } = req.body as Record<string, string | null | undefined>;
 
   if (!isWholeBudget(budgetRange)) {
-    res.status(422).json({ error: "Budget Range must contain whole-number amounts (for example, 1000 - 2000)" });
+    res.status(422).json({ error: "Customer Budget must contain whole-number amounts (for example, 1000 - 2000)" });
     return;
   }
   try {
@@ -889,7 +889,7 @@ router.patch("/:id", requireAuth, async (req, res, next) => {
             .from(usersTable)
             .where(and(
               eq(usersTable.id, normalizedAssigneeId),
-              eq(usersTable.role, "engineering"),
+              inArray(usersTable.role, departmentRoles("engineering")),
             ))
             .limit(1))[0];
 

@@ -47,22 +47,18 @@ function buildApp() {
   const app = express();
   app.use(cookieParser());
   app.use(express.json());
-  // routes/auth.ts logs via req.log (pino-http normally provides it in
-  // production); without a stub here, the admin-console-unavailable branch's
-  // own req.log.error() call throws, which masked its intended 503 response
-  // behind a generic 500 from the error handler below.
-  app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
+  app.use((req, _res, next) => {
     (req as unknown as { log: { error: () => void; warn: () => void } }).log = {
-      error() {},
-      warn() {},
+      error: () => {},
+      warn: () => {},
     };
     next();
   });
   app.use(authMiddleware);
   app.use("/api", authRouter);
-  // Express only dispatches a 4-arg handler as an error handler; the
-  // previous 3-arg signature here was silently skipped on every error, so
-  // whatever Express's own default handler does ran instead.
+  // Express only treats a handler as an error handler if it declares exactly
+  // 4 parameters (err, req, res, next) — a 3-parameter handler is silently
+  // skipped and the request falls through to Express's own default handler.
   app.use((_error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     res.status(500).json({ error: "Internal server error" });
   });

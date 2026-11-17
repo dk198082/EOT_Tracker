@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1640" viewBox="0 0 1500 1640" role="img" aria-labelledby="title desc">
+<title id="title">ETO Tracker — Workflow and review routes</title>
+<desc id="desc">November 2026 reference. Microsoft Entra and Admin Console gate access. ART selects TOUS or TOUK and independently includes Engineering and Production. Four routes lead to ART Final, Quote and Won or Lost. Return, decline, abandon, split, reassignment and grouped email-audit rules are explained below.</desc>
+<defs>
+ <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#475569"/></marker>
+ <marker id="back" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#a16207"/></marker>
+ <style>
+ text{font-family:Arial,Helvetica,sans-serif;fill:#1e293b}
+ .h{font-size:30px;font-weight:700;fill:#102a43}
+ .section{font-size:20px;font-weight:700}
+ .node{font-size:20px;font-weight:700}
+ .body{font-size:17px}
+ .small{font-size:15px;fill:#475569}
+ .white{fill:#fff}
+ .line{fill:none;stroke:#475569;stroke-width:2.4;marker-end:url(#arrow)}
+ .return{fill:none;stroke:#a16207;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#back)}
+ </style>
+</defs>
+<rect width="1500" height="1640" fill="#f8fafc"/>
+<rect width="1500" height="120" fill="#102a43"/>
+<text x="48" y="54" class="h white">ETO TRACKER · WORKFLOW REFERENCE</text>
+<text x="48" y="89" class="body white">Current implementation · November 2026 · Four review routes, one shared request record</text>
+<rect x="48" y="145" width="1404" height="92" rx="12" fill="#e2e8f0"/>
+<text x="70" y="176" class="section">Access before workflow</text>
+<text x="70" y="204" class="body">Microsoft Entra sign-in → Admin Console authorizes app ETO → existing ETO role or new Role None</text>
+<text x="70" y="225" class="small">None: own profile only, no ETO data. Console denial/service failure blocks sign-in. App roles remain separate.</text>
+
+<rect x="48" y="265" width="300" height="98" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="70" y="301" class="node">1 · Draft</text>
+<text x="70" y="329" class="body">Sales / ART</text><text x="70" y="350" class="small">Intake, units, currency, attachments</text>
+<path class="line" d="M348 313H403"/><text x="359" y="291" class="small">Submit</text>
+<rect x="418" y="265" width="630" height="98" rx="12" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+<text x="440" y="299" class="node">2 · ART Review</text>
+<text x="440" y="327" class="body">Select TOUS / TOUK; include Engineering and/or Production</text>
+<text x="440" y="350" class="small">Confirm reviewers and schedule · First submission assigns ETO number</text>
+<rect x="1115" y="265" width="337" height="98" rx="12" fill="#fff" stroke="#cbd5e1"/>
+<text x="1137" y="297" class="section">Assignment defaults</text>
+<text x="1137" y="325" class="body">TOUS: Engineering + Production</text>
+<text x="1137" y="349" class="body">TOUK: Engineering + Production</text>
+
+<text x="48" y="411" class="section">ART acceptance chooses one of four forward paths</text>
+<text x="48" y="438" class="small">Engineering and Production are independent options. Every route continues to ART Final Review.</text>
+<rect x="48" y="461" width="1404" height="325" rx="12" fill="#fff" stroke="#cbd5e1"/>
+<text x="70" y="506" class="body">Both included</text>
+<rect x="330" y="477" width="365" height="49" rx="9" fill="#d1fae5"/><text x="351" y="509" class="node">Engineering Review</text>
+<path class="line" d="M695 501H753"/>
+<rect x="770" y="477" width="365" height="49" rx="9" fill="#ede9fe"/><text x="791" y="509" class="node">Production Review</text>
+<path class="line" d="M1135 501H1262"/>
+<text x="70" y="578" class="body">Engineering only</text>
+<rect x="330" y="549" width="365" height="49" rx="9" fill="#d1fae5"/><text x="351" y="581" class="node">Engineering Review</text>
+<path class="line" d="M695 573H1262"/>
+<text x="70" y="650" class="body">Production only</text>
+<rect x="770" y="621" width="365" height="49" rx="9" fill="#ede9fe"/><text x="791" y="653" class="node">Production Review</text>
+<path class="line" d="M1135 645H1262"/><path class="line" d="M330 645H753"/>
+<text x="70" y="722" class="body">Neither included</text>
+<path class="line" d="M330 717H1262"/>
+<path d="M1278 501V717" fill="none" stroke="#475569" stroke-width="2.4"/>
+<text x="348" y="764" class="small">Complete Review advances to the next included stage. Re-Assign stays in the current stage.</text>
+
+<rect x="48" y="812" width="500" height="143" rx="12" fill="#dbeafe" stroke="#1e3a5f" stroke-width="2"/>
+<text x="70" y="849" class="node">3 · ART Final Review</text>
+<text x="70" y="880" class="body">Price + lead time calculator</text>
+<text x="70" y="907" class="body">Market Price / Market Lead Time / Description / Notes</text>
+<text x="70" y="933" class="small">Description required · Quote defaults remain editable</text>
+<path class="line" d="M1278 609H1365V797H298V807"/>
+<path class="line" d="M548 880H632"/><text x="556" y="855" class="small">Generate</text>
+<rect x="650" y="832" width="290" height="99" rx="12" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+<text x="672" y="868" class="node">4 · Quoted</text><text x="672" y="899" class="body">Sales / ART close-out</text>
+<path class="line" d="M940 880H1016V845H1083"/><path class="line" d="M1016 880V925H1083"/>
+<rect x="1100" y="813" width="352" height="63" rx="12" fill="#dcfce7" stroke="#15803d"/>
+<text x="1122" y="853" class="node">Won</text>
+<rect x="1100" y="894" width="352" height="63" rx="12" fill="#e2e8f0" stroke="#64748b"/>
+<text x="1122" y="934" class="node">Lost · reason required</text>
+
+<rect x="48" y="991" width="1404" height="182" rx="12" fill="#fffbeb" stroke="#eab308"/>
+<text x="70" y="1026" class="section">Returns and lifecycle controls</text>
+<text x="70" y="1056" class="body">ART → Draft · Engineering → ART · Production → Engineering if included, otherwise ART</text>
+<text x="70" y="1084" class="body">ART Final → last included specialist / ART; specific Engineering return supported · Quoted → ART Final</text>
+<text x="70" y="1112" class="body">ART may Decline at ART Review or ART Final. ART / SuperUser may Abandon; Reopen restores the prior stage.</text>
+<text x="70" y="1142" class="small">Returns need reasons and preserve outputs / original schedule. Won, Lost and Declined are terminal.</text>
+
+<rect x="48" y="1197" width="682" height="171" rx="12" fill="#fff" stroke="#cbd5e1"/>
+<text x="70" y="1232" class="section">Review output and calculated lead time</text>
+<text x="70" y="1262" class="body">Engineering: design hours, P/N guidance, risk</text>
+<text x="70" y="1289" class="body">Production: procurement cost/time, assembly hours, risk</text>
+<text x="70" y="1316" class="body">Lead Time = Design + Procurement + Assembly weeks</text>
+<text x="70" y="1345" class="small">Quote starts at ceiling(total weeks); missing values are not zero.</text>
+<rect x="754" y="1197" width="698" height="171" rx="12" fill="#fff" stroke="#cbd5e1"/>
+<text x="776" y="1232" class="section">Assignment, due dates and splits</text>
+<text x="776" y="1262" class="body">Same-stage Re-Assign selects a user in that department.</text>
+<text x="776" y="1289" class="body">Schedule starts at initial ART acceptance; no reset on returns.</text>
+<text x="776" y="1316" class="body">ART may split into 2–10 children during eligible ART Review.</text>
+<text x="776" y="1345" class="small">Parent stays linked/read-only; explicit reviewers remain preserved.</text>
+
+<rect x="48" y="1392" width="1404" height="173" rx="12" fill="#e2e8f0"/>
+<text x="70" y="1427" class="section">Notifications and record integrity</text>
+<text x="70" y="1457" class="body">Graph: ART submission → ART; confirmations → next reviewer; reassignment → new reviewer.</text>
+<text x="70" y="1484" class="body">ART completion / Quote → Submitted by. Ten independent Admin toggles; new types start off; bulk yes/no.</text>
+<text x="70" y="1511" class="body">Audit Trail: Stage / Details / Email. One email event groups all recipients; Graph acceptance ≠ inbox delivery.</text>
+<text x="70" y="1540" class="small">Shared data: Azure PostgreSQL d365crm / crm.eto_* · Private file objects: App Storage · Email failures do not undo workflow.</text>
+<text x="48" y="1607" class="small">Current-state reference; not a production acceptance certificate. Full role guards and API details are in the companion documents.</text>
+</svg>

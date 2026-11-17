@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/MoneyInput";
 import { isWholeBudget } from "@/lib/money";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { HelpLabel as Label, FieldHelp } from "@/components/FieldHelp";
 import { RequiredMark } from "@/components/RequiredMark";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -517,7 +517,7 @@ export default function NewEtoRequest() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="budgetRange">Budget Range</Label>
+                <Label htmlFor="budgetRange">Customer Budget</Label>
                 <div className="flex overflow-hidden rounded-md border border-input bg-background shadow-sm focus-within:ring-1 focus-within:ring-ring">
                   <MoneyInput range currency={watch("budgetCurrency") ?? "USD"}
                     id="budgetRange"
@@ -545,7 +545,7 @@ export default function NewEtoRequest() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="acceptableLeadTime">Acceptable Lead Time (weeks)</Label>
+                <Label htmlFor="acceptableLeadTime">Customer Lead Time</Label>
                 <Input
                   id="acceptableLeadTime"
                   {...register("acceptableLeadTime")}
@@ -570,6 +570,7 @@ export default function NewEtoRequest() {
             <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
               <Paperclip className="h-4 w-4" />
               Attachments
+              <FieldHelp field="Attachments" form="request" />
               {queuedFiles.length > 0 && (
                 <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                   {queuedFiles.length}

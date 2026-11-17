@@ -16,7 +16,7 @@ import { PriceCalculatorSettings } from "@/components/PriceCalculatorSettings";
 import { ReviewAssignmentDefaults } from "@/components/ReviewAssignmentDefaults";
 import { EmailNotificationSettings } from "@/components/EmailNotificationSettings";
 
-const ROLES = ["none", "sales", "art", "engineering", "production", "admin", "superuser"] as const;
+const ROLES = ["none", "sales", "art", "engineering", "production", "eng-prod", "admin", "superuser"] as const;
 type Role = (typeof ROLES)[number];
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -25,6 +25,7 @@ const ROLE_LABELS: Record<Role, string> = {
   art: "ART",
   engineering: "Engineering",
   production: "Production",
+  "eng-prod": "Eng/Prod",
   admin: "Admin",
   superuser: "SuperUser",
 };
@@ -35,6 +36,7 @@ const ROLE_COLORS: Record<Role, string> = {
   art: "bg-purple-50 text-purple-700",
   engineering: "bg-amber-50 text-amber-700",
   production: "bg-green-50 text-green-700",
+  "eng-prod": "bg-teal-50 text-teal-700",
   admin: "bg-red-50 text-red-700",
   superuser: "bg-indigo-50 text-indigo-700",
 };

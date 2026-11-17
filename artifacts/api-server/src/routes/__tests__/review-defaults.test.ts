@@ -12,16 +12,16 @@ vi.mock("@workspace/db", () => ({
   pool: { connect }, ETO_SCHEMA: "crm",
 }));
 let role = "admin";
-vi.mock("../../middlewares/requireAuth", () => {
-  const mockRequireAuth = (_req: unknown, res: any, next: () => void) => {
+vi.mock("../../middlewares/requireAuth", () => ({
+  requireAuthAllowNone: (_req: unknown, res: any, next: () => void) => {
     res.locals.dbUser = { id: 1, name: "Sample Admin", role };
     next();
-  };
-  return {
-    requireAuth: mockRequireAuth,
-    requireAuthAllowNone: mockRequireAuth,
-  };
-});
+  },
+  requireAuth: (_req: unknown, res: any, next: () => void) => {
+    res.locals.dbUser = { id: 1, name: "Sample Admin", role };
+    next();
+  },
+}));
 import usersRouter from "../users";
 
 type Defaults = { id: number; engineeringUserId: number; productionUserId: number; updatedAt: Date };
@@ -29,6 +29,7 @@ const users = [
   { id: 1, role: "admin" },
   { id: 19, role: "engineering" }, { id: 23, role: "production" },
   { id: 34, role: "engineering" }, { id: 35, role: "production" },
+  { id: 36, role: "eng-prod" },
 ];
 let rows: Defaults[];
 const dialect = new PgDialect();
@@ -39,7 +40,10 @@ function selection() {
   const result = () => {
     const compiled = predicate ? dialect.sqlToQuery(predicate) : null;
     const id = compiled?.params[0];
-    if (table === usersTable) return id === undefined ? users : users.filter((user) => user.id === id);
+    if (table === usersTable) {
+      if (compiled?.sql.includes('"role"')) return users.filter((user) => compiled.params.includes(user.role));
+      return id === undefined ? users : users.filter((user) => user.id === id);
+    }
     if (table === reviewAssignmentDefaultsTable) {
       if (compiled?.sql.includes("engineering_user_id")) {
         return rows.filter((row) => row.engineeringUserId === id || row.productionUserId === id);
@@ -127,6 +131,38 @@ describe("Entity-specific reviewer defaults", () => {
       .send({ engineeringUserId: 34, productionUserId: 35 }).expect(200);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: 1, engineeringUserId: 34 });
+  });
+
+  it.each(["TOUS", "TOUK"])("allows the same Eng/Prod user as both defaults for %s", async (entity) => {
+    const saved = await request(app).put("/users/review-defaults")
+      .send({ entity, engineeringUserId: 36, productionUserId: 36 });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ entity, engineeringUserId: 36, productionUserId: 36 });
+    role = "eng-prod";
+    await request(app).put("/users/review-defaults")
+      .send({ entity, engineeringUserId: 36, productionUserId: 36 }).expect(403);
+  });
+
+  it.each(["engineering", "production"])("includes Eng/Prod in the %s assignee list", async (department) => {
+    const response = await request(app).get(`/users?role=${department}`);
+    expect(response.status).toBe(200);
+    expect(response.body.map((user: { id: number }) => user.id))
+      .toEqual(users.filter((user) => user.role === department || user.role === "eng-prod").map((user) => user.id));
+  });
+
+  it("allows a default engineer to gain Eng/Prod while preserving default-role protection", async () => {
+    const client = await connect();
+    client.query.mockImplementation(async (query: string, params: unknown[]) => {
+      if (query.includes("FOR UPDATE")) return { rows: users };
+      if (query.includes("SELECT engineering_user_id")) return {
+        rows: [{ engineering_user_id: 19, production_user_id: 19 }],
+      };
+      if (query.includes("UPDATE")) return { rows: [{ id: 19, name: "Combined reviewer", role: params[0] }] };
+      return { rows: [] };
+    });
+    await request(app).patch("/users/19/role").send({ role: "eng-prod" }).expect(200);
+    await request(app).patch("/users/19/role").send({ role: "engineering" }).expect(400);
+    await request(app).patch("/users/19/role").send({ role: "production" }).expect(400);
   });
 
   it("rejects invalid Entity values, users, departments and unauthorized updates", async () => {

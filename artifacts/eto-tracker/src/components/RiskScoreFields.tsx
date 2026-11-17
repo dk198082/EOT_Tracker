@@ -1,6 +1,6 @@
 import { useId } from "react";
 import type { RiskScore } from "@workspace/api-client-react";
-import { Label } from "@/components/ui/label";
+import { HelpLabel as Label } from "@/components/FieldHelp";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 

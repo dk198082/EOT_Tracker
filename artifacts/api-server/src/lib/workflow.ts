@@ -10,7 +10,7 @@
  */
 
 import type { EtoStage } from "@workspace/db";
-import { isSuperUser } from "./roles";
+import { hasRole } from "./roles";
 
 export type Decision =
   // Sales
@@ -200,7 +200,7 @@ export function validateAndAdvance(
   };
 
   const allowed_roles = roleGuards[decision];
-  if (allowed_roles && !isSuperUser(actorRole) && !allowed_roles.includes(actorRole)) {
+  if (allowed_roles && !hasRole({ role: actorRole }, ...allowed_roles)) {
     throw new Error(
       `Role "${actorRole}" is not allowed to make decision "${decision}"`,
     );

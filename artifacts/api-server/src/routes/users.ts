@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { db, pool, ETO_SCHEMA } from "@workspace/db";
 import { usersTable, reviewAssignmentDefaultsTable, reviewDefaultsId } from "@workspace/db/schema";
-import { eq, or, asc, count, getTableName, sql } from "drizzle-orm";
+import { eq, or, asc, count, getTableName, sql, inArray } from "drizzle-orm";
 import { requireAuth, requireAuthAllowNone } from "../middlewares/requireAuth";
 import { SyncUserBody } from "@workspace/api-zod";
 import type { User } from "@workspace/db";
-import { isAdminLike, SUPERUSER_ROLE, UNASSIGNED_ROLE } from "../lib/roles";
+import { isAdminLike, SUPERUSER_ROLE, UNASSIGNED_ROLE, matchesRole, departmentRoles } from "../lib/roles";
 import { upsertLocalUser } from "../lib/localUser";
 
 const router = Router();
@@ -81,10 +81,10 @@ router.put("/review-defaults", requireAuth, async (req, res, next) => {
         .from(usersTable).where(eq(usersTable.id, engineeringUserId)).limit(1);
       const [production] = await tx.select({ id: usersTable.id, role: usersTable.role })
         .from(usersTable).where(eq(usersTable.id, productionUserId)).limit(1);
-      if (!engineer || engineer.role !== "engineering") {
+      if (!engineer || !matchesRole(engineer.role, "engineering")) {
         return { error: "Engineering default must have the Engineering role" } as const;
       }
-      if (!production || production.role !== "production") {
+      if (!production || !matchesRole(production.role, "production")) {
         return { error: "Production default must have the Production role" } as const;
       }
       const [row] = await tx.insert(reviewAssignmentDefaultsTable)
@@ -195,7 +195,7 @@ router.post("/bootstrap-admin", requireAuth, async (req, res, next) => {
   }
 });
 
-const VALID_ROLES = [UNASSIGNED_ROLE, "sales", "art", "engineering", "production", "admin", SUPERUSER_ROLE] as const;
+const VALID_ROLES = [UNASSIGNED_ROLE, "sales", "art", "engineering", "production", "eng-prod", "admin", SUPERUSER_ROLE] as const;
 type ValidRole = (typeof VALID_ROLES)[number];
 
 /** PATCH /api/users/:id/role — update a user's role (admin only, or first user bootstrap) */
@@ -296,8 +296,8 @@ router.patch("/:id/role", requireAuth, async (req, res, next) => {
         `SELECT engineering_user_id, production_user_id FROM ${reviewDefaultsTableName}`,
       );
       if (defaultsRes.rows.some((defaults) =>
-          (defaults.engineering_user_id === targetId && role !== "engineering") ||
-          (defaults.production_user_id === targetId && role !== "production"))) {
+          (defaults.engineering_user_id === targetId && !matchesRole(role, "engineering")) ||
+          (defaults.production_user_id === targetId && !matchesRole(role, "production")))) {
         await client.query("ROLLBACK");
         res.status(400).json({ error: "Change the default reviewer in Admin > Assignment Defaults before changing this user's role." });
         return;
@@ -442,7 +442,7 @@ router.get("/", requireAuth, async (req, res, next) => {
   try {
     const { role } = req.query;
     const users = role && typeof role === "string"
-      ? await db.select().from(usersTable).where(eq(usersTable.role, role))
+      ? await db.select().from(usersTable).where(inArray(usersTable.role, departmentRoles(role)))
       : await db.select().from(usersTable);
     res.json(users.map(u => ({ id: u.id, authId: u.authId, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt })));
   } catch (err) {

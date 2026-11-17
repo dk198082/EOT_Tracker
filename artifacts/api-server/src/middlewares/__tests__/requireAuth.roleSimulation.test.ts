@@ -126,7 +126,7 @@ describe("requireAuth role simulation", () => {
     expect(response.body).toEqual({ role: "none" });
   });
 
-  it.each(["sales", "art", "engineering", "production"])(
+  it.each(["sales", "art", "engineering", "production", "eng-prod"])(
     "accepts the supported %s pilot role",
     async (role) => {
       const response = await request(createApp())
