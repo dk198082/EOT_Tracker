@@ -1,96 +1,140 @@
-# ETO (Engineer-To-Order) — Business & Process Brief
-**Updated September 2026 · Current application and remaining business goals**
+# ETO — Business & Process Brief
 
----
+**Refreshed:** November 2026 · **Scope:** Delivered process and remaining goals
 
-## What Problem We're Solving
+## Business purpose
 
-Historically, custom product requests were managed by email, spreadsheets, and shared drives. ETO Tracker now provides a central record, role-based handoffs, history, an assigned-work queue, and overdue indicators. Measuring average time per stage and finding similar past requests remain future goals; the current dashboard does not deliver those capabilities.
+ETO Tracker replaces disconnected email/spreadsheets for custom requirements
+with a shared request, clear functional handoffs, structured estimates and
+auditable decisions. The objective is complete inputs for specialist teams,
+visible ownership for Sales, and a consistent basis for commercial quoting.
+Email is a notification channel, not a replacement for the request record.
 
----
+## Participants and access
 
-## Who Uses It
-
-| Role | Involvement |
+| Participant | Responsibility |
 |---|---|
-| **Sales** | Creates and submits ETO requests, supplies structured requirements, reviews progress, and marks quoted orders Won or Lost (ART may also mark outcomes) |
-| **ART (Application Review Team)** | Accepts or declines requests, independently includes/skips Engineering and Production, may override the default engineer, and sets final market price and lead time |
-| **Engineering** | Supplies estimated design hours and P/N guidance; the configured formula estimates design cost and lead time |
-| **Production** | Supplies procurement cost/lead time and estimated assembly hours; the configured formula estimates assembly cost and lead time |
-| **Admin / SuperUser** | Manages app users and roles, default specialist reviewers, and design/assembly formula settings; SuperUser can simulate operational permissions |
-| **Order Mapping Team** | Downstream business participant; top-level part-number creation is not automated by ETO Tracker |
+| Sales | Prepare and submit requests; provide requirements; record permitted quoted outcomes |
+| ART | Select Entity and review scope; accept/return/decline; set reviewers and schedule; issue final commercial output |
+| Engineering | Design-hours estimate, P/N guidance and technical risk |
+| Production | Procurement estimate, assembly-hours estimate and production risk |
+| Admin | Users/roles, TOUS/TOUK defaults, formulas and notification switches |
+| SuperUser | Exceptional operational access and controlled role simulation |
+| None | Console-approved sign-in, but no ETO data until an app role is assigned |
 
----
+Microsoft Entra authenticates users. The external Admin Console must authorize
+the registered app ETO before the app issues a session. Local ETO roles remain
+separate. Existing users keep their roles; new approved users start with None.
 
-## Prior Manual Process
+## Process from intake to outcome
 
-Sales submits a custom request via email/spreadsheet → ART reviews manually → Engineering and/or Production consulted by email → ART sets price and communicates back → Won orders manually logged in D365 and a spreadsheet.
+1. **Prepare Draft.** Capture customer/quote references, system and test
+   requirements, materials/specimen, units, budget/currency and acceptable
+   lead time. System Type includes Other; attachments are optional.
+2. **Submit to ART.** Assign the ETO number on first submission.
+3. **ART Review.** Select Entity TOUS/TOUK first, choose Engineering and
+   Production independently, choose/confirm specialist reviewers and schedule.
+   ART may return to Draft with a reason, decline, or split an eligible request.
+4. **Engineering, if included.** Capture positive design hours, P/N guidance,
+   risk and notes. Saved formulas estimate design cost and time.
+5. **Production, if included.** Capture procurement cost/time, assembly hours,
+   risk and notes. Saved formulas estimate assembly cost and time.
+6. **ART Final Review.** Review the cost and lead-time calculations; generate
+   a quote with Market Price, Market Lead Time, required part Description, and
+   optional Notes. This moves the request to Quoted.
+7. **Commercial close-out.** Sales/ART record Won or Lost. Lost requires a
+   reason and is distinct from ART's pre-quote Declined outcome.
 
----
+## Four valid review routes
 
-## Process in ETO Tracker Today
-
-Sales creates a draft using the structured intake form, with optional attachments, then submits it to ART. ART chooses either, both, or neither specialist review. Engineering and Production receive assignments from the defaults in Admin → Users when their stages begin; ART can choose another engineer for a specific ETO. ART Final records market price and lead time, creating a Quoted request. Sales or ART records Won or Lost in the app. D365 entry remains manual. Comments, attachments, review outputs, and stage decisions stay with the request; ART can split a request into linked children during ART Review.
-
-Returns require a reason and move to the earlier applicable stage (not a same-stage "More Info" state). An assigned engineer remains sticky on backward routing. ART can decline during ART Review or ART Final Review, or abandon and later re-open active work. Production does not have a Decline decision.
-
----
-
-## Pain Points
-
-- The former email/spreadsheet process lacked a central request and audit trail; migration to the app depends on teams using it consistently.
-- Notifications and reminders require a configured email sender and an available recipient; delivery failures do not stop the workflow, and there is no persistent delivery log.
-- Time-in-stage and frequency of the **current** backward-return decisions are not accurately reported yet.
-- Engineering spends disproportionate time on information-gathering rather than engineering
-- Similarity search across past ETOs is not implemented; attachment text extraction/OCR alone is not AI similarity matching.
-
----
-
-## Desired Outcomes / Critical Success Factors
-
-1. **Single source of truth** — request data, optional attachments, comments, specialist outputs, and decisions in one record; email is notification-only (with a link back to the record)
-2. **Automated accountability** — overdue status and attempted reminders after 3 days at non-Engineering stages or 5 days in Engineering, subject to email configuration
-3. **Real-time metrics dashboard** — ETOs by current stage, open/won/lost/declined totals, ART decline breakdown, overdue count, and each user's queue; average stage duration remains future work
-4. **Reduced engineering overhead** — Engineering receives complete, structured inputs; does not manage follow-ups
-5. **Future D365 integration** — automatically link ETOs to orders and downstream processes; current app only exposes the generated ETO number for manual use and records Won in-app
-6. **Future AI assistance** — similarity review and communication summaries are not current app features
-
----
-
-## Major Process Stages
-
-```
-[1] Draft             →  Sales intake and optional attachments; submit to ART
-[2] ART Review        →  Include/skip Engineering and Production independently; return to Draft, decline, or split
-[3] Engineering       →  Design hours, calculated design estimate, P/N guidance (optional)
-[4] Production        →  Procurement and calculated assembly estimates (optional)
-[5] ART Final Review  →  Market price and market lead time; advance to Quoted
-[6] Quoted            →  Sales/ART marks Won or Lost, or returns to ART Final
-```
-
-ART may abandon and re-open active requests. Order-completion analysis and D365-triggered part-number creation are outside the current app.
-
----
-
-## Major Decisions
-
-| Stage | Decision Options |
+| ART's selections | Route |
 |---|---|
-| **ART Review** | Accept with optional specialist stages · Return to Draft · Decline · Split request |
-| **Engineering Review** | Quote Ready → Production if included, otherwise ART Final · Return to ART Review |
-| **Production Review** | Approve → ART Final · Return to Engineering if included, otherwise ART Review; no Decline |
-| **ART Final Review** | Quote with market price and lead time · Return to Production or Engineering · Decline |
-| **Quoted** | Mark Won or Lost · Return to ART Final |
+| Both reviews | ART → Engineering → Production → ART Final |
+| Engineering only | ART → Engineering → ART Final |
+| Production only | ART → Production → ART Final |
+| Neither | ART → ART Final |
 
----
+Engineering returns to ART. Production returns to Engineering when included,
+otherwise ART. ART Final returns to the last applicable review/ART; a specific
+Engineering return is also supported. Quoted work may return to ART Final.
+Returns require a reason; they are not same-stage “More Info” self-loops.
 
-## Key Business Rules
+ART/SuperUser can abandon supported active work and reopen it to its recorded
+prior stage. Won/Lost/Declined are terminal in the current workflow.
 
-- **ETO number** is generated in the app. Copying it into D365 remains manual; there is no won-order webhook or generated quote document.
-- **No automatic part-number/documentation creation** — Engineering records P/N guidance rather than creating downstream artifacts.
-- **Review assignments** default to Admin-selected users on entry to Engineering and Production; ART may override an individual engineer. Backward Engineering returns preserve that request's sticky reviewer. Changing defaults does not retroactively move open work.
-- **Engineering/Production versus ART** — specialist design and procurement/assembly estimates inform ART's separate final market price and market lead time. Monetary amounts carry a currency code; force and displacement carry separate units.
-- **Reminder cadence:** active non-Engineering stages become overdue after 3 days, Engineering after 5; the daily email sweep attempts delivery when configured.
-- **Comments and history stay in the app** — external email contains an ETO number and link, not a replacement conversation.
-- **Recorded transitions and details** are timestamped for traceability; average time-in-stage is not yet computed.
-- **Won-order trigger:** Won is an in-app decision, not a D365 action. The current email template targets the submitter and previous assignee when sending is configured; it does not initiate PN creation.
+## Ownership, Entity and deadlines
+
+Admin → Assignment Defaults contains four independent choices: TOUS
+Engineering, TOUS Production, TOUK Engineering, TOUK Production. TOUK does not
+silently inherit TOUS choices. Defaults apply on stage entry; explicit ART
+choices and retained reviewers are preserved on returns.
+
+Engineering/Production reviewers can use **Re-Assign** to select another user
+in their department without advancing the request or losing saved review work.
+An actual change can notify the new reviewer if that switch is enabled.
+
+The due-date baseline is initial ART acceptance. Only included specialist
+durations plus ART Final duration contribute. Cumulative review deadlines and
+the overall due date remain fixed through rework returns. Inactivity-overdue
+alerts are separate; missing historical schedules are not invented.
+
+## Commercial calculation
+
+The Price Calculator uses Design + Procurement + Assembly costs, then adds
+Contingency and additive Margin. Admin defaults initialize per-request
+percentages; saved percentages do not change with future Admin default edits.
+Money is whole-number, currency-aware, and never silently FX-converted.
+Mixed-currency totals are labelled Multi-Currency for ART review.
+
+Calculated Lead Time is Design + Procurement + Assembly **weeks**. Generate
+Quote starts Market Lead Time at the final sum rounded **up** to a whole week.
+ART can independently override quote price/time. Description is required and
+separate from Notes.
+
+## Notifications and audit
+
+Microsoft Graph sends enabled notifications from the configured no-reply
+mailbox. ART submissions reach ART; ART completion informs the original
+submitter with the expected due date; confirmations/reassignments notify the
+next/new reviewer. Generate Quote informs the submitter with Price, Lead Time,
+Description and Notes, with ETO/Quote references in the subject.
+
+Admin → Email Notifications independently controls ten event categories,
+including reminders/other updates; new categories start off. Set all to
+yes/no is available. Current selections persist across restarts.
+
+Audit Trail has Stage, Details and Email tabs. Email entries group all
+recipients/messages under one originating event. Graph acceptance is not
+proof of inbox receipt. Email failure does not roll back an accepted review.
+Failed historical entries do not turn successful when credentials are fixed.
+
+## Record continuity
+
+ART/SuperUser can split an eligible ART Review request into 2–10 linked child
+requests. The parent remains visible but workflow-read-only; children proceed
+in ART Review with inherited requirements and independent attachments.
+
+Request Details edits are restricted to ART/SuperUser. Comments, specialist
+outputs and attachments have their own authorized operations and histories.
+The ETO Requests grid includes Assignee, stage, inactivity-overdue and family
+filters plus search. Dashboard provides current workload/outcome metrics and
+the signed-in user's queue.
+
+Records are stored in one shared Azure PostgreSQL `d365crm` / `crm.eto_*`
+dataset. Private files are stored separately in App Storage.
+
+## Current limits and future goals
+
+- Adopt consistent input quality and role ownership across both entities.
+- Average stage-duration reporting and semantic similarity matching are not
+  completed features.
+- D365 order entry/ERP posting and automated quote synchronization remain
+  outside the current implemented business integration.
+- Durable email queue/replay controls and confirmed inbox-delivery tracking
+  are not implemented.
+- Admin Console availability and a valid integration key are dependencies
+  for sign-in; failure is not bypassed.
+
+This brief describes current delivery, not a promise that deferred goals are
+already available. Detailed acceptance boundaries are in the refreshed MVP
+Contract; implementation boundaries are in the Technical Details reference.

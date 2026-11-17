@@ -1,120 +1,164 @@
 # ETO Tracker — MVP Solution Blueprint
-**Updated September 2026 · As-built solution**
 
----
+**Refreshed:** November 2026 · **Type:** As-built solution map
 
-## 1. Primary Users
+## 1. System context
 
-| User | Role in MVP |
-|---|---|
-| **Sales** | Creates and submits requests, supplies structured inputs, tracks progress, and records Won/Lost outcomes |
-| **ART** | Reviews and routes requests, includes/skips specialist stages, can split a request, and records final market price and lead time |
-| **Engineering** | Supplies estimated design hours and P/N guidance on assigned requests; design cost/lead time are formula-calculated |
-| **Production** | Supplies procurement cost/lead time and assembly hours; assembly cost/lead time are formula-calculated |
-| **Admin / SuperUser** | Manages users, roles, Engineering/Production defaults, and formula settings; SuperUser may simulate operational roles without changing their stored identity |
-
-One shared app, role-based views. No separate portals.
-
----
-
-## 2. Core Screens
-
-1. **Dashboard** — stage and open/won/lost/declined counts, overdue count, decline breakdown, and "assigned to me" queue
-2. **ETO List** — searchable/filterable table of all requests (ETO #, customer, status, assignee, age)
-3. **New ETO Request Form** — Sales intake: customer and quote, distributor, request/system type, force and displacement with units, materials, specimen dimensions, results required, custom requests; standards, budget/currency, desired lead time, similar parts, and attachments are optional
-4. **ETO Detail** — intake, audit timeline, comments, optional private attachments/previews, specialist outputs, split-family links, and role-appropriate actions
-5. **Admin** — Users tab for role management and specialist default reviewers; Design Formula and Assembly Formula tabs for rates and change history
-
----
-
-## 3. Core Data Objects
-
-- **ETO Request** — auto-generated ETO number, structured form fields (units and currency stored separately), stage inclusion choices, assignee/sticky engineer, parent/child split links, timestamps
-- **Comment / Communication** — threaded notes on a request (replaces email chains)
-- **Attachment** — private files linked to a request; supported documents/images can be indexed by text extraction/OCR
-- **Stage Transition (audit log)** — who moved it, from/to, decision, reason, timestamp (powers metrics)
-- **Review Outputs** — Engineering (design hours, calculated cost/lead time, P/N guidance); Production (procurement cost/lead time, assembly hours, calculated cost/lead time); ART Final (market price/currency, market lead time, notes). Historical output values remain readable.
-- **Formula Settings / History** — configurable hourly rate, hours per week, and capacity factor for design and assembly; completed outputs retain their formula-rate snapshot
-- **User / Review Defaults** — local role-bearing user linked on Microsoft Entra sign-in; one admin-selected Engineering and one Production default reviewer
-
----
-
-## 4. Workflow Stages
-
-```
-Draft → ART Review → [Engineering Review] → [Production Review] → ART Final Review → Quoted → Won / Lost
-                   ↘ Declined (ART only)                          ↘ Declined (ART only)
-Active stages → Abandoned → Re-opened at the previous active stage
+```text
+Browser → React/Vite ETO UI → Express API → Azure PostgreSQL d365crm / crm.eto_*
+                                  ├→ Private App Storage (file objects)
+                                  ├→ Microsoft Entra ID (authentication/token issuance)
+                                  ├→ Admin Console (application-admission check)
+                                  └→ Microsoft Graph (notification submission)
 ```
 
-ART independently includes or skips Engineering and Production. Backward returns require a reason and create a new stage-transition record; there are no same-stage "More Info" transitions. On entering a specialist stage, the configured reviewer is assigned unless an allowed per-request choice or sticky engineer takes precedence. Changes to Admin defaults do not overwrite existing assignments. ART can split an unsplit request at ART Review into linked children.
+The browser never receives the Admin Console API key or Graph client secret.
+The server authorizes actions; hiding a button is not a security boundary.
+Schema changes and environment settings must be deployed intentionally;
+this diagram does not claim that every published instance has the same build.
 
----
+## 2. Screen map
 
-## 5. Key Decisions
-
-| Owner | Decisions |
+| Screen / area | Main controls and records |
 |---|---|
-| ART Review | Accept with optional specialist reviews · Return to Draft · Decline · Split |
-| Engineering | Quote Ready → Production if included, otherwise ART Final · Return to ART Review (engineer remains sticky for later Engineering returns) |
-| Production | Approve → ART Final · Return to Engineering if included, otherwise ART Review; no Decline action |
-| ART Final | Quote (market price + lead time) · Return to Production or Engineering · Decline |
-| Quoted (Sales / ART) | Mark Won or Lost · Return to ART Final |
-| ART / SuperUser | Abandon active work or re-open abandoned work |
+| Sign-in / access pending | Microsoft sign-in; separate no-ETO-access state for role None |
+| Dashboard | Stage/outcome/overdue metrics; assigned-to-me queue |
+| ETO Requests | Search; stage, Assignee, overdue and split-family filtering; pagination |
+| New Request | Structured intake, currency/units, System Type Other, attachments; save/submit |
+| Request details | Intake, Entity, numbering, ownership, planned deadlines and split links |
+| Workflow Actions | Stage/role-specific completion, return and lifecycle controls |
+| Specialist outputs | Engineering design and Production procurement/assembly estimates with risks |
+| Price Calculator | Costs, per-request percentages, Sales Price and calculated lead time |
+| Generate Quote | Independent Market Price/Lead Time, required Description, parts guidance and Notes |
+| Audit Trail | Stage / Details / Email; event-grouped recipients and message outcomes |
+| Workflow | On-screen route reference and downloadable SVG |
+| Admin | Users / Assignment Defaults / Email Notifications / Design Formula / Assembly Formula / Price Calculator |
 
----
+Re-Assign sits between Complete Review and Back in the Engineering/Production
+actions. It changes a department assignee, not the stage.
 
-## 6. Email Notification Behavior
+## 3. Identity and authorization sequence
 
-Email templates link back to the record and include the ETO number in the subject. Microsoft Entra app credentials and a Graph sender mailbox with `Mail.Send` permission are required; skipped or failed delivery does not block the transition. Each request's Audit Trail → Email shows persistent, event-grouped send history with all recipients, message subjects and Graph acceptance outcomes. Disabled notifications are not logged, and earlier emails cannot be reconstructed.
+1. Start Entra login with PKCE, state and nonce.
+2. Validate the callback and identify the authenticated Entra object ID.
+3. Call Admin Console access-check for registered app ETO using server credentials.
+4. Denied: reject sign-in. Unavailable/invalid credential/invalid response:
+   reject sign-in without bypass.
+5. Resolve or create the existing ETO user mapping. Preserve existing roles;
+   new approved users get None.
+6. Persist the session in crm.eto_sessions and set the session cookie.
+7. On business APIs, require an authenticated mapped user with an assigned
+   role and enforce the operation's role/stage rules.
 
-| Trigger | Recipients |
+Admin Console admission is not an automatic import of Console roles into ETO
+permissions. Current admission occurs at login; it is not a claim of continuous
+Console revalidation on every already-issued session.
+
+## 4. Workflow and ownership model
+
+Draft → ART → optional Engineering → optional Production → ART Final →
+Quoted → Won/Lost. Entity is selected during ART Review. Both specialist
+inclusion flags are independent, giving four forward routes.
+
+ART acceptance saves schedule and reviewer decisions. Entity-specific defaults
+are starting assignments; explicit per-request assignments survive applicable
+return loops. TOUK's defaults are independent of TOUS. Same-stage reassignment
+retains the stage, deadlines and outputs.
+
+Returns require reasons and use applicable earlier reviews. Decline is allowed
+at ART Review/ART Final only. Abandon/reopen is a separate ART/SuperUser
+lifecycle path. Split parents remain linked/read-only; children proceed in ART.
+
+## 5. Logical data design
+
+All names below are in schema **crm**, database **d365crm**. The ORM maps
+20 application tables; names already beginning eto_ receive no second prefix.
+
+| Table | Responsibility |
 |---|---|
-| New ETO submitted | ART |
-| Other stage changes | Submitter + new assignee, if any |
-| Order won | Submitter + previous assignee, if any |
-| Inactivity — 3 days no action | Available owner of an active non-Engineering stage |
-| Inactivity — 5 days no action | Available owner of an active Engineering stage |
+| eto_users | Entra-linked application users, role and profile |
+| eto_sessions | Server-side sessions and expiry |
+| eto_requests | Intake, stage, Entity, reviewer selections, schedule, split/lifecycle context |
+| eto_stage_transitions | Append-only stage decisions, reasons and actor context |
+| eto_detail_changes | Field-level edit and assignment-change audit |
+| eto_comments | Request discussion |
+| eto_attachments | File metadata, private object references and searchable indexing state/text |
+| eto_engineering_outputs | Design estimate, formula snapshot, P/N guidance, risk and legacy values |
+| eto_production_outputs | Procurement/assembly estimates, formula snapshot, risk and legacy values |
+| eto_art_final_outputs | Market Price/currency, Market Lead Time, Description and Notes |
+| eto_review_assignment_defaults | Entity-specific Engineering and Production defaults |
+| eto_price_calculator_settings | Global initial contingency/margin defaults |
+| eto_price_calculator | Saved per-request calculator percentages |
+| eto_design_formula_settings | Current design calculation assumptions |
+| eto_design_formula_changes | Design settings history |
+| eto_assembly_formula_settings | Current assembly calculation assumptions |
+| eto_assembly_formula_changes | Assembly settings history |
+| eto_email_notification_settings | Independent persisted notification switches |
+| eto_email_delivery_events | One email audit record per originating event, recipient union and nested messages |
+| eto_data_imports | Data-import/reconciliation bookkeeping |
 
----
+Files are not stored as database byte arrays. Business table definitions,
+relationships and delete policies live in lib/db/src/schema. Special cutover
+archive helpers are not a separate permanent live ETO dataset.
 
-## 7. Required Dashboards / KPIs
+## 6. Calculation and output ownership
 
-- Requests by stage (live counts)
-- Won / Lost / Declined / Open totals and overdue count
-- ART decline count by stage
-- "Assigned to me" queue (per-user view on dashboard)
+Engineering supplies hours, P/N guidance and risk; design settings calculate
+cost and weeks. Production supplies procurement cost/weeks and assembly hours;
+assembly settings calculate assembly cost/weeks. Saved outputs retain their
+calculation assumptions.
 
-The dashboard does **not** yet calculate average time per stage. Its legacy "more info" count does not capture the current backward-return decisions and should not be treated as a current-process KPI.
+The Price Calculator adds whole-number source costs, contingency and additive
+margin. Global percentages initialize unsaved per-request settings only.
+Mixed-currency arithmetic is explicitly labelled and never silently converted.
 
----
+Lead time is saved Design + Procurement + Assembly weeks. Quote generation
+starts Market Lead Time at ceiling(total). Price/time quote overrides are
+independent. Description is mandatory; Notes is a separate field.
 
-## 8. Integrations Required for MVP
+## 7. Event and email design
 
-- **Microsoft Entra ID (OIDC)** authenticates users. App records hold roles; admins can pre-create users and set roles in the Users tab, with identity linking on first sign-in.
-- **Private Replit Object Storage** holds optional attachments; uploads/downloads are authenticated, with signed links or a safe inline preview endpoint.
-- **Microsoft Graph** sends stage notifications and daily-sweep inactivity reminders only when configured.
-- **D365 remains manual**: the app displays the ETO number for manual use, and Won is recorded in-app. An optional read-only Azure CRM database connection is not two-way D365/Dataverse workflow integration.
+Committed workflow/assignment actions build enabled notifications. A durable
+email-history row is created before sending; messages and recipients are
+grouped by originating action. If initial history persistence fails, the
+messages are not sent untracked.
 
----
+Graph app-only tokens authorize sendMail from the configured mailbox.
+Authorization failures refresh the token once; other failures are not a
+general replay mechanism. Email sending is not transactionally guaranteed
+with the preceding business action, and there is no durable outbox worker.
 
-## 9. Features Explicitly Deferred to a Future Phase
+After sends, per-message outcomes and aggregate accepted/partial/failed/skipped
+status are updated. If the outcome write fails, history may stay unconfirmed;
+that does not authorize resending a possibly accepted message. UI refresh and
+polling read the stored event rather than inferring mail from stage history.
 
-| Feature | Reason deferred |
-|---|---|
-| D365 two-way integration (auto field sync, won-order webhook) | Integration risk; manual paste covers MVP need |
-| AI similarity search on new requests | Requires sufficient historical data to be useful |
-| AI summaries of communications | Nice-to-have; core value is structured data, not AI summaries |
-| AI white papers on won orders | Future polish |
-| AI screening of incoming orders against sales lists | Complex; requires order feed integration |
-| SharePoint push of engineering packages | Dependent on D365/SharePoint setup |
-| Historical ETO bulk import | Targeted user/submitter imports exist, but a general historical ETO import is not established |
-| Quote-document generation | Manual process is acceptable at MVP scale |
-| Accurate average time-in-stage and current return-loop metrics | Current dashboard does not compute these |
-| Inbox-delivery confirmation | Send attempts are recorded per request, but inbox delivery is not confirmed |
+Ten independent settings cover ART submission/completion, three forward
+assignment events, two reassignments, quote generation, inactivity reminders
+and other workflow updates. They begin off and offer atomic bulk yes/no.
 
----
+## 8. Storage, search and reporting
 
-## Design Principle
+Authorized upload metadata registration associates private objects with
+requests. Download/preview access is scoped; safe types can be streamed inline
+from the same origin. The indexer extracts text/OCR for supported formats and
+retains indexing progress/failure state.
 
-The solution centers on one shared, role-gated request workflow and its audit trail. Admin controls, private attachments, configurable reviewer/formula settings, and split ETOs support that workflow. AI, D365 write automation, SharePoint, and order-completion analysis remain separate future work; dashboard metrics should be described only where they are actually computed.
+Search uses request/related text, including extracted attachment text. It is
+not semantic similarity matching. Dashboard reads current request state and
+history-derived metrics; average stage-time reporting remains incomplete.
+
+## 9. Delivery boundaries and deferred work
+
+- Development and published apps use the shared Azure ETO namespace when
+  configured as intended; this is not independent production data isolation.
+- Admin Console key rotation is distinct from Entra/Graph permissions.
+- APP_BASE_URL must be the verified published origin for notification links.
+- D365 quote/order creation and synchronization are not implemented in the
+  current business API despite the CRM database name.
+- Durable notification outbox/retry UI, inbox confirmation, nested splits,
+  merge-back, AI summaries/similarity and robust time-in-stage reporting are
+  not part of current delivered capability.
+
+Detailed API/configuration and recovery guidance are in the Technical Details
+and End-to-End Flow reference; user expectations are in the MVP Contract.

@@ -1,246 +1,318 @@
 # ETO Tracker — Technical Details and End-to-End Flow
 
-**Updated September 2026 · As-built application**
-
-This is the implementation reference for the current ETO Tracker. It covers runtime components, key functions, API routes, persisted data, the stage pipeline, and what happens from sign-in through a completed request. The [MVP Contract](ETO_MVP_Contract.md), [Business & Process Brief](ETO_Business_Process_Brief.md), and [Solution Blueprint](ETO_MVP_Solution_Blueprint.md) describe the corresponding product and business scope. Code paths below are relative to the repository root.
+**Refreshed:** November 2026
+**Scope:** As-built source/configuration reference. No credentials or user
+records are included. Runtime verification of a published deployment remains
+a separate activity.
 
 ## 1. Runtime architecture
 
-```text
-Browser
-  React + Vite / Wouter / React Query
-  artifacts/eto-tracker/src
-            │ generated hooks and custom fetch (session cookie)
-            ▼
-Express API at /api
-  artifacts/api-server/src
-  Entra OIDC login → DB-backed session → local app role
-  request validation → role gate → workflow/state validation
-            │                   │                    │
-            ▼                   ▼                    ▼
-   PostgreSQL / Drizzle    Private Object Storage    Microsoft Graph email
-  lib/db/src/schema       attachments + previews   if configured
-            ▲
-            │
-  API background jobs: daily reminders; attachment text indexing
-  Optional Azure CRM PostgreSQL: read-only connectivity health check
-```
+- React/Vite/TypeScript frontend in artifacts/eto-tracker.
+- Express/TypeScript API in artifacts/api-server, mounted under /api.
+- Shared Drizzle schema/connection package in lib/db.
+- OpenAPI contract in lib/api-spec; generated client/types in shared packages.
+- Private App Storage for file objects; PostgreSQL for metadata/extracted text.
+- Microsoft Entra authentication; external Admin Console admission check.
+- Microsoft Graph app-only outbound email.
 
-| Component | Responsibility |
+Services bind their configured PORT and run via artifact-managed workflows.
+Frontend requests use the app's same-origin routing rather than hardcoded
+localhost. Public deployment configuration and secrets must be checked
+independently from a development workflow restart.
+
+## 2. Identity, admission, provisioning and session
+
+GET /api/login starts Entra authorization-code authentication with PKCE,
+state and nonce. GET /api/auth/callback validates the response and obtains the
+Entra object ID. Tenant resolution uses ENTRA_TENANT_ID, then TENANT_ID, then
+AZURE_TENANT_ID; CLIENT_ID and CLIENT_SECRET identify the configured application.
+
+Before local-user provisioning or session issuance, checkAdminConsoleAccess
+calls the configured Console base URL plus /api/access-check, with:
+
+- Query parameters entraObjectId and app=ETO.
+- Server-side X-API-Key from ADMIN_CONSOLE_API_KEY.
+- HTTPS, JSON response, five-second timeout, no redirects and no response cache.
+
+The expected body contains boolean allowed, nullable/string reason and a
+string-array roles. Invalid/missing configuration, network failure, non-success
+HTTP response or invalid body fails closed. Allowed=false denies login with
+403. An unavailable check returns the generic 503 “Application access could
+not be verified” message; it is not permission to create a session anyway.
+
+Entra identity links to the existing role-bearing app user. Preserve existing
+integer IDs, request relationships and roles. New approved users receive None.
+Console role strings do not overwrite application roles. Admission is checked
+at sign-in; do not claim immediate Console revocation of every existing session.
+
+Opaque session IDs reference crm.eto_sessions; session TTL is seven days.
+GET /api/auth/user exposes current authentication state; GET /api/users/me
+permits a None-role user to inspect their own mapped profile. Other business
+data routes deny None-role access. Logout deletes the server session/cookie.
+
+SuperUser simulation is validated server-side; effective operational role is
+distinct from real identity, stored role and audit actor.
+
+## 3. Authoritative database namespace
+
+The connection exported by lib/db uses Azure PostgreSQL **d365crm**. Drizzle
+definitions use **crm** explicitly. All 20 mapped app tables have the **eto_**
+prefix; eto_requests and eto_price_calculator are not double-prefixed.
+
+Startup verifies database identity, writeability, expected tables/CRUD
+privileges and required additive quote/entity columns. Use the current schema
+and migrations as authority, not the historic 18-table reports.
+
+| Table (crm.) | Main data / operation |
 |---|---|
-| `artifacts/eto-tracker` | Web UI for sign-in, dashboard, ETO list, request creation/detail, workflow diagram, and administration. Wouter handles routes; React Query and the generated `@workspace/api-client-react` hooks handle API state. |
-| `lib/api-spec`, `lib/api-zod`, `lib/api-client-react` | API contract, runtime request schemas, and generated frontend hooks/fetch wrapper. The UI is not the authority for permission or transition checks. |
-| `artifacts/api-server` | Express routes under `/api`; OIDC/session handling, role authorization, request persistence, state machine, calculations, storage access, notifications, and background jobs. |
-| `lib/db` | Drizzle schema and PostgreSQL connection. Local users retain application roles independently of Entra identity. |
-| Replit Object Storage | Private attachment objects. Database attachment rows carry metadata and storage references; file bytes are not stored in PostgreSQL. |
-| Microsoft Graph | Optional outbound stage-change emails and inactivity reminders, sent from the configured tenant mailbox. Email acceptance is not required for a successful stage transition. |
-| Azure CRM PostgreSQL | Optional read-only **health connection**. It does not perform ETO/D365 synchronization or write orders. |
+| eto_users | Profile, Entra link, ETO role; resolve/create at authorized login; Admin role maintenance |
+| eto_sessions | Create/read/refresh/delete sessions and expiry |
+| eto_requests | Intake CRUD supported by routes; numbering, stage, Entity, reviewer/schedule/family state |
+| eto_stage_transitions | Insert/read stage decisions and reasons |
+| eto_detail_changes | Insert/read detail and assignment changes |
+| eto_comments | Insert/read discussion |
+| eto_attachments | Register/read/delete metadata and object links; update indexing state/text |
+| eto_engineering_outputs | Per-request design estimate, formula assumptions, risk, P/N guidance and preserved legacy fields |
+| eto_production_outputs | Per-request procurement/assembly estimate, assumptions, risk and preserved legacy fields |
+| eto_art_final_outputs | Per-request quote price/currency, lead time, description and notes |
+| eto_review_assignment_defaults | Entity-specific specialist defaults |
+| eto_price_calculator_settings | Global initial contingency/margin |
+| eto_price_calculator | Saved per-request contingency/margin |
+| eto_design_formula_settings | Current design assumptions |
+| eto_design_formula_changes | Design configuration history |
+| eto_assembly_formula_settings | Current assembly assumptions |
+| eto_assembly_formula_changes | Assembly configuration history |
+| eto_email_notification_settings | One persisted switch per notification type |
+| eto_email_delivery_events | Event recipient union, nested message outcomes and timestamps |
+| eto_data_imports | Import/reconciliation bookkeeping |
 
-The web artifact uses its configured base path for browser routes. The API router is mounted at `/api`. The API server listens on `PORT`; its startup registers the jobs described in §10.
+Relationships to users and requests are defined by the schema. Outputs are
+unique per request. Child metadata such as transitions/comments/outputs/email
+events uses the declared request foreign-key rules. Physical object deletion
+is a separate storage operation, not automatic database-byte deletion.
 
-## 2. Sign-in, roles, and request authorization
+Development and published configurations use one shared ETO dataset; avoid a
+second permanent live table set. The shared-cutover safeguards preserve archive
+and identity integrity. An old open form must not silently refresh into a
+different remapped request identity.
 
-1. `AppRouter` and `AuthenticatedRoute` in `artifacts/eto-tracker/src/App.tsx` display sign-in when there is no authenticated user and wrap protected pages with `AppLayout` otherwise. The frontend redirects to the API's Microsoft Entra OIDC login.
-2. `GET /api/login` creates OIDC state, nonce, and PKCE verifier; `GET /api/auth/callback` validates the response and maps the Entra object identifier (with subject fallback) to a local user. The application creates a database-backed session and sets an HTTP-only session cookie. See `artifacts/api-server/src/routes/auth.ts` and `src/lib/auth.ts`.
-3. `authMiddleware` hydrates the session on API requests; `requireAuth` rejects missing sessions (401) and identities without provisioned application access (403), then loads the local role. Roles are `sales`, `art`, `engineering`, `production`, `admin`, and `superuser`.
-4. Server-side role guards control mutations; hiding a button in the UI is not authorization. Admin/SuperUser can manage users, default reviewers, and formulas. Admin is **not** automatically an ART/Engineering/Production decision-maker.
-5. A SuperUser may simulate `sales`, `art`, `engineering`, or `production` permissions using the `x-eto-simulated-role` header. The real user ID remains the actor in audit records; the simulated role is recorded separately. Admin/SuperUser cannot be selected as simulated roles. The web shell stores the chosen simulation for the session and the fetch wrapper attaches the header.
-6. On an authenticated-user change, `AuthQueryClientCacheInvalidator` clears React Query's cache to avoid showing the previous user's data. Login/callback, health, and the specifically signed preview route have different access handling from ordinary authenticated workflow routes.
+## 4. Request creation, numbering and edits
 
-## 3. Frontend functions and views
+POST /api/eto-requests creates a draft with structured intake and submitted-by
+identity. Numbering occurs on first submit-to-ART; an already assigned number
+is retained. New Request includes System Type Other and separate currency and
+measurement-unit values.
 
-| View / module | Technical function |
+GET list supports text, stage, Assignee, overdue and split-family criteria
+with pagination. GET /:id returns a request. PATCH /:id updates authorized
+Request Details and records field-level changes; ART/SuperUser is required for
+existing details, not merely record ownership.
+
+POST /:id/split serializes an eligible ART Review split into 2–10 children,
+creates suffixed numbers, copies intake/quote context and independent storage
+objects, and appends split events. Parent remains workflow-read-only; no nested
+split/merge-back. Prior parent history is not copied as if performed on children.
+
+There is no general user-facing request-delete action. Special administrative
+cleanup scripts are not the standard request lifecycle.
+
+## 5. Workflow transaction and specialist routing
+
+POST /api/eto-requests/:id/transitions validates decision, effective role,
+stage and required fields before committing outputs/ownership/stage/history.
+The central state machine is lib/workflow.ts.
+
+| Decision / stage | Result |
 |---|---|
-| `App.tsx` | `AppRouter` declares `/dashboard`, `/eto-requests`, `/eto-requests/new`, `/eto-requests/:id`, `/workflow`, and `/admin`; `AuthenticatedRoute` gates protected pages. |
-| `pages/Dashboard.tsx` | Fetches live metrics and `my-queue`; links counts, overdue items, and assigned requests to the list/detail views. |
-| `pages/EtoList.tsx` | Server-backed search, stage/overdue/split-family filters, and pagination. Search is debounced; a family filter keeps split siblings together. |
-| `pages/NewEtoRequest.tsx` | Zod/react-hook-form validation, creates a Draft ETO, then uploads optional files using signed URLs and registers their attachment metadata. |
-| `pages/EtoDetail.tsx` | Fetches the request, decisions, audit trail, comments, attachments, outputs, and detail-change history. Renders role- and stage-specific controls, saves editable details/outputs, and submits transition decisions. |
-| `pages/Admin.tsx` and formula/default components | Admin/SuperUser user creation, role changes and deletion; selection of default Engineering/Production reviewers; design/assembly formula settings and change history. |
-| `pages/WorkflowDiagram.tsx` | Read-only explanation of the stage pipeline with SVG export. It does not control the server state machine. |
-| `lib/api-client-react/src/custom-fetch.ts` | Connects generated API hooks to the proxied API, includes the session cookie, and sends the simulation header when applicable. |
+| submit / Draft | ART Review |
+| approve-engineering / ART | Engineering if included; else Production if included; else ART Final |
+| engineering-quote-ready / Engineering | Production if included; else ART Final |
+| production-approve / Production | ART Final |
+| art-final-quote / ART Final | Quoted |
+| mark-won or mark-lost / Quoted | Won or Lost |
+| return-draft / ART | Draft |
+| engineering-return-art | ART Review |
+| production-return-engineering | Engineering if included; otherwise ART Review |
+| art-final-return-production | Last included specialist, otherwise ART Review |
+| art-final-return-engineering | Specific return to Engineering |
+| quoted-return-art-final | ART Final Review |
+| decline / ART gates | Declined |
+| mark-abandoned / supported active stages | Abandoned |
+| reopen / Abandoned | Recorded prior stage |
 
-Frontend validation improves usability, but the API independently validates payloads, roles, stage state, and reviewer assignments.
+Won/Lost/Declined are terminal; closed is a retained legacy terminal value.
+Returns, decline, lost and abandon require reasons. The backward decisions are
+not same-stage More Info loops even if legacy fields/counters retain that name.
 
-## 4. Complete request lifecycle
+Entity is TOUS/TOUK. Four defaults in Admin → Assignment Defaults resolve by
+Entity/department. TOUK does not silently fall back to TOUS; null-Entity legacy
+behavior does not populate an invented Entity. Explicit ART reviewer choices
+and retained assignments take precedence on applicable later returns.
 
-### A. Draft creation and optional files
+POST /api/eto-requests/:id/reassign validates current specialist stage,
+authorized department and target user, updates assignment/detail audit without
+a stage transition, preserves saved outputs/deadlines, then notifies only on an
+actual committed change if enabled.
 
-1. Sales completes required intake data: customer/quote, distributor, request and system types, force and displacement ranges **with separate units**, materials, specimen dimensions, results required, and custom request details. Standards, budget/currency, requested lead time, similar parts, and attachments are optional. The API validates the create payload with `CreateEtoRequestBody`.
-2. `POST /api/eto-requests` generates a unique ETO number, stores the Draft with the submitter, and records a **draft → draft creation audit entry**. Creation is not the same as submitting the request to ART.
-3. For an optional attachment, the client asks `POST /api/storage/uploads/request-url` for a short-lived signed PUT URL, uploads bytes directly to private storage, then calls `POST /api/eto-requests/:id/attachments` to register a DB row. The pending upload token is scoped to the user and ETO. See §9 for download, preview, indexing, and deletion.
+## 6. Review outputs, formulas, calculator and schedule
 
-### B. Submit and route
+GET/PUT engineering-output, production-output and art-final-output operate
+under /api/eto-requests/:id. Output permissions/validation are server-side.
 
-4. Sales (or ART) submits the Draft using `POST /api/eto-requests/:id/transitions` with decision `submit`. The stage becomes `art-review`; its individual assignee is cleared so ART can pick it up from the queue. The transition is audited, and configured email attempts to notify ART.
-5. ART Review can return to Draft (with reason), decline (with reason), or accept. Acceptance sends independent `includeEngineeringReview` and `includeProductionReview` flags; **both default to true**, but either or both can be disabled. If Engineering is included, ART may choose a particular engineer instead of the configured default.
-6. Acceptance goes to Engineering if included, otherwise Production if included, otherwise ART Final. Entering a specialist review requires a valid user of that role: the per-request engineer override or Admin-selected default for Engineering, and the Admin-selected default for Production. Missing/invalid reviewers reject the transition with 422 rather than silently leaving work unassigned.
+Engineering captures positive estimatedDesignHours, required pnGuidance and
+risk; Production captures whole-number procurement cost, nonnegative
+procurement weeks and assembly hours, and risk. High risk requires explanatory
+notes. Derived cost/week estimates retain the formula assumptions used at save.
+Legacy costEstimate/docLeadtime and mfgLeadtime/prodLeadtime values are preserved,
+not silently reinterpreted as the new outputs.
 
-### C. Specialist outputs and final quote
+Design Cost = round(design hours × design hourly rate); Design Weeks =
+design hours ÷ design hours-per-week ÷ design capacity factor. Assembly uses
+the corresponding assembly hours/rate/hours-per-week/capacity factor. The
+capacity-adjusted estimates are separate from procurement weeks. Settings and
+saved snapshots, rather than an assumed fixed global rate, drive each output.
 
-7. Engineering records positive estimated design hours and P/N guidance and chooses `engineering-quote-ready`. The server calculates design cost and lead time from the configured formula, stores the resulting output and formula values, then advances to Production (if included) or ART Final.
-8. Production records nonnegative procurement cost, procurement lead time in weeks, and assembly hours, then chooses `production-approve`. The server calculates assembly cost and lead time using the assembly formula, persists its output, and advances to ART Final. Production has no Decline action.
-9. ART Final sets market price/currency and market lead time, then chooses `art-final-quote`; the request becomes `quoted`. These market values are separate from specialist cost and time estimates.
-10. Sales or ART marks the Quoted request `won` or `lost` (Lost requires a reason), or returns it to ART Final with a reason. Won and Lost are terminal; no quote document, D365 order, or part number is automatically produced.
+Admin design/assembly settings and histories are under /api/admin/design-formula
+and /api/admin/assembly-formula. Histories describe configuration changes, not
+a complete revision history of every specialist output.
 
-### D. Returns, abandonment, and split families
+Price settings: /api/admin/price-calculator. Per-request percentages:
+/api/eto-requests/:id/price-calculator. Defaults initially 10% contingency and
+55% margin initialize unsaved requests; saved per-request values are independent.
 
-11. Returns are **backward stage transitions with a recorded reason**, not same-stage “More Info” loops: ART Review → Draft; Engineering → ART Review; Production → Engineering if included, otherwise ART Review; ART Final → Production when included, otherwise Engineering when included, otherwise ART Review. ART Final can explicitly return to Engineering only after a prior completed Engineering review; that action enables Engineering on the request. Quoted → ART Final is also available.
-12. ART can abandon a request at any active stage (including Draft and Quoted), providing a reason. `reopen` consults the latest abandonment audit entry and restores its previous stage; the stored assignee remains parked across abandonment/reopen. Declined is an ART-only terminal outcome from ART Review or ART Final.
-13. ART/SuperUser can split an **unsplit ART Review parent** into child requests. A transaction locks and marks the parent, creates numbered children with copied intake and attachments, and records split audit entries. Children each start at ART Review and move independently. The parent stays visible as the family anchor but cannot take normal stage transitions after the split.
+Money uses exact-decimal half-up whole-number rounding. With rounded source
+costs D/P/A: B=D+P+A; C=round(B×contingency%); M=round((B+C)×margin%);
+Sales Price=B+C+M. Margin is additive, not gross-margin division.
+Mixed currencies are labelled Multi-Currency without conversion.
 
-## 5. Stage pipeline and decision matrix
+Lead time uses saved Design + Procurement + Assembly weeks. Generate Quote
+starts Market Lead Time at ceil(total), not ceil(each component). Missing
+estimates remain missing. ART may override Market Price/currency/lead time
+independently of calculator settings. Quote Description is required, trimmed
+and separate from Notes, including later quote-output writes.
 
-```text
-Draft --submit--> ART Review --accept--> [Engineering] --> [Production] --> ART Final
-                        |                   |               |               |
-                        +--return--> Draft  +--return--> ART+--return-----> prior applicable stage
-                        +--decline--> Declined                               +--decline--> Declined
+The review schedule starts on the reviewer's ART-acceptance calendar day,
+includes only selected specialist durations plus ART Final, rounds combined
+partial days upward and exposes cumulative review deadlines. Returns preserve
+the original baseline. Inactivity-overdue calculation is a separate mechanism.
 
-ART Final --quote--> Quoted --mark-won--> Won
-                         +--mark-lost--> Lost
-                         +--return----> ART Final
+## 7. Email delivery and event history
 
-Any active stage --mark-abandoned--> Abandoned --reopen--> previous active stage
-```
+lib/notification-settings.ts defines ten opt-in settings: art_submission,
+sales_art_complete, art_assignment, engineering_assignment, production_assignment,
+engineering_reassignment, production_reassignment, quote_generated,
+inactivity_reminder, other_workflow_updates.
 
-Square brackets indicate optional stages. The backend's `ALLOWED` decision map and `validateAndAdvance` in `artifacts/api-server/src/lib/workflow.ts` are authoritative; `closed` is a **legacy-only** stored terminal stage and is not a new transition target.
+Admin GET/PUT /api/admin/email-notifications and PUT
+/api/admin/email-notifications/:notificationType read/update settings. Bulk
+yes/no is one atomic persisted operation. Missing/new types are off; existing
+choices are not reset by startup or deployment.
 
-| Current stage | Decision → next stage | Allowed operational role / checks |
-|---|---|---|
-| Draft | `submit` → ART Review; `mark-abandoned` → Abandoned | Submit: Sales/ART. Abandon: ART with reason. |
-| ART Review | `approve-engineering` → first included review or ART Final; `return-draft` → Draft; `decline` → Declined; `mark-abandoned` → Abandoned | ART. Returns, declines, abandonment require reasons. ART may also split an unsplit parent here via a separate endpoint. |
-| Engineering Review | `engineering-quote-ready` → Production or ART Final; `engineering-return-art` → ART Review; `mark-abandoned` → Abandoned | Engineering for review actions; quote-ready requires design hours > 0 (≤ 1,000,000) and P/N guidance. ART controls abandonment. |
-| Production Review | `production-approve` → ART Final; `production-return-engineering` → Engineering or ART Review; `mark-abandoned` → Abandoned | Production for review actions; approval requires procurement cost/lead time and assembly hours (all nonnegative; hours ≤ 1,000,000). ART controls abandonment. |
-| ART Final Review | `art-final-quote` → Quoted; `art-final-return-production` → first applicable earlier review; `art-final-return-engineering` → Engineering; `decline` → Declined; `mark-abandoned` → Abandoned | ART. Quoting requires market price and lead time; return/decline/abandon needs reason. Direct return to Engineering requires a prior completed Engineering review. |
-| Quoted | `mark-won` → Won; `mark-lost` → Lost; `quoted-return-art-final` → ART Final; `mark-abandoned` → Abandoned | Sales/ART for outcome or return. Lost/return/abandon requires reason; abandonment is ART-only. |
-| Abandoned | `reopen` → the most recent abandoned-from stage | ART; previous stage must be recoverable from audit history. |
-| Won / Lost / Declined | No further transitions | Terminal in the current workflow. |
+Recipient rules:
 
-SuperUser may take the operational actions above without changing their stored identity. Admin alone cannot bypass these role guards.
+- ART submission → ART users.
+- ART completion → original Submitted by, including expected due date.
+- Review confirmations → next assigned reviewer; shared ART queue → ART users.
+- Department reassignment → newly assigned reviewer after an actual change.
+- Generate Quote → Submitted by with Price, Lead Time, Description and Notes;
+  subject contains ETO and Quote numbers.
+- Eligible reminders → current owner; remaining enabled workflow updates →
+  submitter/relevant owner.
 
-### Assignment invariants
+lib/email.ts obtains an Entra client-credentials token with Graph .default
+scope and POSTs to /v1.0/users/{sender}/sendMail. GRAPH_SENDER_EMAIL normally
+identifies no-reply@tiniusolsen.com. App-only Application Mail.Send/admin
+consent or an explicitly configured Exchange application equivalent is
+required; delegated scopes alone do not authorize this background sender.
 
-- Specialist defaults live in `review_assignment_defaults` and are managed at Admin → Users. A default is applied **on entry** to its stage; changing it does not retroactively reassign in-progress requests.
-- ART can override a specific engineer during ART approval or reassign an Engineering-stage request to another Engineering user. The chosen engineer is stored as `stickyEngineerUserId` and reused when the request returns to Engineering. Production uses the current Production default on entry.
-- Actions that move into ART stages generally clear the individual assignee. Abandon/reopen preserves the parked assignment. A request with split children cannot advance as the parent.
+Tokens are cached. An explicit 401/403 rejection invalidates authorization and
+retries once with a fresh token; it is not a general retry loop. Token/send
+requests have bounded timeouts. Sanitized provider error codes/correlation IDs
+are logged without raw tokens or provider message bodies.
 
-## 6. Transition implementation and important functions
+deliverLoggedEmails creates one crm.eto_email_delivery_events row per originating
+event before sending. A union of recipients and per-message name, subject,
+recipients/status is stored, not message bodies or credentials. Multiple enabled
+messages for one action stay under that event. Aggregate states are pending,
+accepted, partial, failed or skipped. Completion-write failure can leave the
+outcome unconfirmed even if Graph accepted the message.
 
-`POST /api/eto-requests/:id/transitions` in `artifacts/api-server/src/routes/transitions.ts` executes the critical path:
+GET /api/eto-requests/:id/email-history powers Audit Trail → Email with Refresh
+and polling. Acceptance is not delivery/read confirmation. Disabled events
+are not sent; no historical backfill or automatic manual-retry UI exists.
+Business transitions commit independently; email failure does not undo them.
+There is no durable outbox guaranteeing delivery after a process interruption.
+POST /api/admin/email/test exists for an authorized administrator's own address;
+there is no corresponding dedicated UI button in the current implementation.
 
-```text
-authenticate + parse ID/body
-  → validateDecisionFields(decision, body)
-  → load ETO and any prerequisite audit rows
-  → validateAndAdvance(current stage, decision, actor role, review flags)
-  → resolve assignee/default/sticky engineer
-  → DB transaction:
-       conditional ETO stage update (expected stage; not a split parent)
-       + upsert specialist/ART output when the decision completes a review
-       + insert stage_transitions audit entry
-  → return updated request
-  → attempt transition email without blocking response
-```
+## 8. Attachments, comments and audit
 
-The conditional update returns **409** if the stage has changed or the parent has been split since it was read; no specialist output or transition audit is committed in that case. `stage_transitions` records the real actor, optional simulated role, from/to stages, decision, reason, review flags chosen at ART acceptance, and timestamp. This is not a same-stage More Info mechanism. Initial creation and splitting also write same-stage audit entries for their own events.
+Request-scoped comments support list/create. Attachments support metadata
+list/register/delete plus download and preview-link issuance. Private file
+objects use App Storage; upload URLs and object access require authorization.
+The upload ceiling is 50 MB, with server allowlist and contextual count checks.
 
-| Function / module | Purpose |
+Safe preview types can stream through an authenticated/signed same-origin
+inline endpoint so PDF viewers do not depend on blocked blob/external frames.
+Preview access is validated before archive inspection.
+
+Text extraction/OCR runs asynchronously with persisted indexing status,
+attempts and leases. Tesseract is isolated in a child process; office parsers
+remain external to the API bundle. Not every accepted file type is indexed.
+
+Stage decisions are append-only audit records; detail edits have field-level
+old/new values. Email is a distinct event audit, not proof inferred from stage
+changes. Same-stage assignment changes do not fabricate stage transitions.
+
+## 9. API groups and administration
+
+Other principal routes: /api/dashboard/metrics, /api/dashboard/my-queue;
+/api/users and /api/users/:id/role; /api/users/review-defaults;
+/api/healthz and /api/healthz/azure-crm; authenticated storage upload routes.
+Consult lib/api-spec for exact HTTP bodies and generated response contracts.
+
+Admin UI tabs: Users, Assignment Defaults, Email Notifications, Design Formula,
+Assembly Formula, Price Calculator. Admin/SuperUser checks are distinct from
+ART's operational controls. No user-promote button or broad resource editor
+should be assumed solely from a backend route's existence.
+
+## 10. Configuration and recovery guide
+
+Names only; actual credential values belong in secure configuration.
+
+| Group | Configuration |
 |---|---|
-| `validateAndAdvance` / `advance` in `src/lib/workflow.ts` | Enforce allowed stage/decision pairs, operational role guards, optional-stage routing, and reopen target. |
-| `validateDecisionFields` in `src/routes/transitions.ts` | Enforce decision-specific required values and reasons before the stage transaction. |
-| `generateEtoNumber`, `fetchEtoWithJoins` in `src/routes/eto-requests.ts` | Issue request identifiers and assemble detail/list response with related users and split-family data. |
-| `getSplitFamilyMetadata` in `src/lib/splitFamily.ts` | Provide parent/child family identity and ordering; list pagination expands complete families. |
-| `getDesignFormula`, `calculateDesignEstimate` in `src/lib/design-formula.ts` | Load design rate/capacity settings and calculate cost and lead time. |
-| `getAssemblyFormula`, `calculateAssemblyEstimate` in `src/lib/assembly-formula.ts` | Load assembly settings and calculate cost and lead time. |
-| `sendTransitionEmails`, `sendInactivityReminder` in `src/lib/email.ts` | Create record-linked messages for stage changes and overdue owners; return unsuccessful status on skip/failure. |
-| `runReminders` in `src/scripts/remind.ts` | Find overdue assigned active requests, send when eligible, and stamp successful reminder attempts. |
-| `runAttachmentIndexing` in `src/scripts/indexAttachments.ts` | Claim and extract searchable attachment text asynchronously with bounded retries. |
-| `ObjectStorageService` / pending-upload helpers in `src/lib/objectStorage.ts`, `src/lib/pendingUploads.ts` | Signed private upload/download operations and user-/ETO-bound registration token. |
+| Entra | CLIENT_ID, CLIENT_SECRET; tenant aliases described above |
+| Admin Console | ADMIN_CONSOLE_URL, ADMIN_CONSOLE_API_KEY, ADMIN_CONSOLE_APP_NAME=ETO |
+| Graph | Same configured Entra credentials; GRAPH_SENDER_EMAIL |
+| Notification links | APP_BASE_URL set to the verified published origin |
+| Azure PostgreSQL | AZURE_PG_HOST, AZURE_PG_PORT, AZURE_PG_DATABASE, AZURE_PG_SCHEMA, AZURE_PG_USER, AZURE_PG_PASSWORD and TLS settings |
+| Storage | Platform-managed bucket/private-object configuration |
 
-In the function table, `src/` refers to `artifacts/api-server/src/` unless another root is shown.
+**Sign-in cannot verify access:** Check the Console access-check response.
+401/“Invalid or revoked API key” means the integration credential is rejected,
+not that a person's ETO role should be changed. Confirm the Console instance
+and active key, update the app secret securely, restart the affected runtime
+and recheck. A valid response denying a synthetic unknown identity proves the
+gate is reachable and closed for that identity; it does not approve a real user.
 
-### Calculation and configuration
+**Graph 403:** Inspect fresh application permissions; delegated Mail.Send is
+insufficient. Permission changes do not update an already-issued cached token.
+Then check sender mailbox and Exchange application restrictions if denial
+persists with fresh authorization. Do not move a request backward/forward
+merely to resend mail; its accepted business transition may already be correct.
 
-```text
-calculated cost       = estimated hours × hourly rate
-calculated lead weeks = estimated hours ÷ hours per week ÷ capacity factor
-```
+**Failed historical event:** Keep it as historical evidence. Fixing credentials
+does not rewrite old outcomes or authorize replay. Send live diagnostics only
+with authorization and distinguish acceptance from inbox receipt.
 
-Engineering uses estimated **design** hours; Production uses estimated **assembly** hours. Procurement cost and procurement lead time are separately entered, not computed by the assembly formula. The configured formula parameters used for a completed output are stored with that output. Admin changes to formula settings are recorded with actor and previous/new values; identical saves are skipped. Both Design and Assembly tabs expose history; design history is cursor-paginated. The API also allows appropriately authorized output editing through the output routes, with server-side numeric checks and restrictions on changing already-recorded hour fields; stage-completion decisions upsert their outputs atomically with the transition. Historical output fields remain readable.
+## 11. Limits and release cautions
 
-## 7. HTTP API map
+No automated D365 order/quote synchronization, ERP posting, semantic similarity,
+AI summary generation, nested split/merge-back, full stage-duration analytics,
+durable email outbox or guaranteed inbox delivery is implemented.
 
-All paths in this table have the `/api` prefix. Unless noted, workflow/data routes require an authenticated application session. IDs are checked and mutation bodies are validated server-side.
-
-| Area | Methods and paths | Behavior |
-|---|---|---|
-| Health | `GET /healthz`, `GET /healthz/azure-crm` | API readiness and optional read-only CRM connection check. |
-| Authentication | `GET /login`, `GET /auth/callback`, `GET /auth/user`, `GET /logout`; `POST /mobile-auth/logout` | OIDC login/callback, current session user, logout. |
-| Users/defaults | `GET /users/me`, `GET /users`, `POST /users`, `PATCH /users/:id/role`, `DELETE /users/:id`; `GET/PUT /users/review-defaults`; `POST /users/sync`, `POST /users/bootstrap-admin` | Local role administration and reviewer defaults; synchronization/bootstrap have additional identity and safety checks. |
-| Requests | `GET/POST /eto-requests`, `GET/PATCH /eto-requests/:id`, `POST /eto-requests/:id/split` | Search/list/create/detail/edit/split with role and state checks. |
-| Decisions/audit | `GET/POST /eto-requests/:id/transitions` | Ordered transition history and authoritative stage action. |
-| Comments | `GET/POST /eto-requests/:id/comments` | Request-linked notes with author/timestamp. |
-| Attachments | `GET/POST /eto-requests/:id/attachments`, `GET /eto-requests/:id/attachments/:attachmentId/download`, `GET /eto-requests/:id/attachments/:attachmentId/preview-link`, `GET /eto-requests/:id/attachments/:attachmentId/preview`, `DELETE /eto-requests/:id/attachments/:attachmentId` | Metadata, signed download, signed/authenticated inline preview, deletion. |
-| Outputs and detail audit | `GET/PUT /eto-requests/:id/engineering-output`, `/production-output`, `/art-final-output`; `GET /eto-requests/:id/detail-changes` | Specialist outputs and recorded detail edits. |
-| Dashboard | `GET /dashboard/metrics`, `GET /dashboard/my-queue` | Aggregate counts/overdue indicators and requests assigned to the current user. |
-| Upload/storage | `POST /storage/uploads/request-url`; `GET /storage/public-objects/*filePath` | Signed upload authorization for private objects; separate public-object serving. Private attachments are **not** exposed by the public route. |
-| Admin settings | `GET/PUT /admin/design-formula`, `GET /admin/design-formula/history`; corresponding `/admin/assembly-formula` routes; `POST /admin/email/test` | Formula config/history and an API-only admin email send test. |
-
-`/admin/email/test` exists as an API route; the current Admin page does not provide a delivery-test button. Request-level history is available at `GET /eto-requests/:id/email-history` and Audit Trail → Email.
-
-## 8. Database model and audit
-
-Schema definitions live in `lib/db/src/schema`. Drizzle routes/helpers access PostgreSQL directly; there is no separate repository service layer.
-
-| Table(s) | Role in the flow |
-|---|---|
-| `users`, `sessions`, `review_assignment_defaults` | Entra-linked local user/role, DB-backed session, and one Engineering/Production default setting. |
-| `eto_requests` | Authoritative current stage, ETO number, intake values, separate units/currencies, inclusion flags, assignee/sticky engineer, submitter, split-parent links, abandonment/reminder timing fields. |
-| `stage_transitions` | Decision history: ETO, real actor, simulated role if any, previous/next stage, decision, reason, chosen review flags, timestamp. |
-| `comments`, `attachments`, `detail_changes` | Notes, private-object metadata/indexed text status, and request field-edit history. |
-| `engineering_outputs`, `production_outputs`, `art_final_outputs` | One output record per request for each review; cost/lead-time formula values are saved with calculated outputs. |
-| `design_formula_settings`, `assembly_formula_settings`, `design_formula_changes`, `assembly_formula_changes` | Configured parameters and their change histories. |
-| `data_imports` | Ledger for targeted import/repair operations; not a general historical ETO bulk import feature. |
-
-The request row stores the **current** state; the transition table tells how it got there. Split parents and children remain separate requests linked by a self-reference. Older `closed` rows and historical Lost representations remain readable; dashboard stage counts fold legacy terminal representations into Lost without changing the stored audit history.
-
-## 9. Attachment flow
-
-1. Request upload authorization: the API checks MIME type and size (maximum 50 MB), generates a private object path and signed PUT URL, and records a short-lived pending token in server memory.
-2. Browser uploads directly to private storage, then registers file metadata against the ETO. Registration consumes the token and verifies its user/ETO binding. Files are optional at intake.
-3. Authenticated download verifies the attachment belongs to the ETO and returns a short-lived signed private GET URL. PDF and supported image previews instead use a short-lived signed same-origin preview link (or authenticated access) that streams with inline, no-sniff, private/no-store headers.
-4. A background indexer runs at startup and every two minutes. It leases pending/failed attachment rows, extracts supported document text, and uses a separate Tesseract process for supported image OCR. It records searchable text or an error/status, with limited retry attempts. This is **not** AI similarity search; scanned PDFs are not generally OCR'd by the current extractor.
-5. Uploader or admin-like user may delete an attachment. The API removes the storage object before deleting the metadata row; a storage failure aborts DB deletion. If registration fails after upload, an orphaned object can remain, and abandoned uploads are not automatically cleaned up.
-
-## 10. Background jobs, email, and dashboard
-
-| Trigger | Processing |
-|---|---|
-| Successful stage transition | After the HTTP response, `sendTransitionEmails` attempts Microsoft Graph delivery for enabled notification types. Missing configuration, recipients, or provider failure does not roll back the transition. |
-| API server startup and 08:00 UTC daily | `runReminders` finds assigned, nonterminal requests inactive for 5 days in Engineering or 3 days elsewhere; it attempts a Microsoft Graph email to the current owner and updates `lastRemindedAt` only after Graph accepts it. Unassigned requests have no owner reminder. |
-| API server startup and every two minutes | `runAttachmentIndexing` attempts a bounded batch of text extraction/OCR without delaying upload or workflow requests. |
-| Dashboard load | Stage/open/won/lost/declined counts, declines by ART stage, overdue count, and the signed-in user's assignment queue are queried from current requests and transition history. Engineering overdue threshold is 5 days; other active stages use 3. |
-
-Average time per stage is currently returned as an empty metric. The legacy “more info” count does **not** count current backward returns. Neither is a reliable current-process KPI. New email events are persisted in `crm.eto_email_delivery_events`: one row per originating action, with the combined recipients and per-message outcomes. The record is inserted before sending; Graph acceptance, failure, partial acceptance, missing recipients and pending/unconfirmed outcomes are distinguished. History is not backfilled, disabled notifications create no records, and email bodies or credentials are not retained. Email requires Microsoft Entra app credentials, a configured Graph sender mailbox with `Mail.Send` permission, and the published app URL for request links; the optional CRM connection only checks read-only connectivity and has no two-way D365 flow.
-
-## 11. Failure and consistency boundaries
-
-- API role, schema, decision-field, and stage validations run even when UI controls are hidden or client-side validation passes. Typical responses: 401 unauthenticated, 403 unauthorized/unprovisioned, 404 missing request, 422 invalid business input/state/reviewer, 409 stale transition or concurrent split.
-- A stage update, associated review output upsert, and its transition audit entry commit in one PostgreSQL transaction. The expected-stage and `hasSplitChildren = false` conditions prevent stale actions and post-split parent actions from silently succeeding.
-- Split creation also uses a DB transaction and attempts cleanup of copied storage objects on failure. Email and OCR are outside the workflow transaction; failures there do not reverse the business decision.
-- Audit entries record decisions, but the current app does not derive accurate average stage duration from them. Do not equate the presence of audit timestamps with a finished time-in-stage report.
-- This implementation does **not** perform automated D365 writes, won-order webhooks, quote-document generation, part-number creation, AI similarity matching, or general historical ETO import.
-
-## 12. Where to change behavior
-
-| Change | Authoritative place to inspect first |
-|---|---|
-| Add/change stage, decision, routing, or role guard | `artifacts/api-server/src/lib/workflow.ts`, `src/routes/transitions.ts`, and the stage/decision schema in `lib/db`/`lib/api-zod`; then update detail controls and workflow diagram. |
-| Change reviewer assignment | `src/routes/transitions.ts`, `src/routes/users.ts`, `lib/db/src/schema/review_assignment_defaults.ts`, and Admin/default-reviewer UI. |
-| Change specialist output or formula | `src/routes/outputs.ts`, `src/routes/transitions.ts`, `src/lib/design-formula.ts`, `src/lib/assembly-formula.ts`, `src/routes/admin.ts`, and relevant DB/output schemas. |
-| Change request fields, list/search, or splitting | `src/routes/eto-requests.ts`, `src/lib/splitFamily.ts`, `lib/db/src/schema/eto_requests.ts`, and the New/Detail/List pages. |
-| Change authentication or roles | `src/routes/auth.ts`, `src/lib/auth.ts`, `src/middlewares/authMiddleware.ts`, `src/middlewares/requireAuth.ts`, `src/lib/roles.ts`, and the web auth/layout components. |
-| Change files/notifications/jobs | `src/routes/storage.ts`, `src/routes/attachments.ts`, `src/lib/objectStorage.ts`, `src/scripts/indexAttachments.ts`, `src/lib/email.ts`, `src/scripts/remind.ts`, and `src/index.ts`. |
-
-For rows beginning `src/`, the root is `artifacts/api-server/src/`. Changes to an API contract may require regenerating the client in `lib/api-client-react`; the workflow state machine and server checks remain the source of truth.
+This documentation refresh did not mutate business data, change access
+permissions or send test email. Source inspection is not a new production
+end-to-end acceptance run. Publish/restart behavior, schema additions, secret
+scope and verified published links must be checked in the intended runtime.

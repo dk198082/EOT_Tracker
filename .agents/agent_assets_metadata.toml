@@ -6,21 +6,27 @@ id = "OLmtgsC0ISFIIdpoSg0hg"
 uri = "file://artifacts/eto-tracker/public/eto-workflow-diagram.svg"
 type = "image"
 title = "ETO Workflow Diagram"
-description = "Full stage/decision/role flow for ETO Tracker — all three routing paths, more-info loops, and role legend. Download from the app sidebar Workflow page."
+description = "November 2026 reference: four review routes, Entity defaults, reassignment, quote outcomes, security and grouped email history."
 logical_id = "58a06e84-b60f-42b9-a261-ed5d50b9b1aa"
+content_hash = "sha256:ef772f90e66ec471255b525da30249b3093aebbc7fc5aaa85757563e73ce4ccc"
+size = 8581
+mtime_ms = 1794501434824
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/58a06e84-b60f-42b9-a261-ed5d50b9b1aa/cc6df88c-7a56-484e-b312-23754baf8114"
+storage_version_token = "1794501470618414"
+content_type = "image/svg+xml"
 
 [[outputs]]
 id = "zpqYm-7rnxM3eGK5Jo6wm"
 uri = "file://docs/ETO_TRACKER_APP_OVERVIEW.md"
 type = "text"
 title = "ETO Tracker — Application Overview"
-description = "Business and technical overview covering functionality, roles, workflow, integrations, data model, API surface, security, operations, and current limitations."
+description = "Refreshed November 2026: current roles, Entra and Admin Console access, shared Azure data, review calculations, quote generation and Graph notifications."
 logical_id = "801f4039-a41a-4821-bd05-ab10aacffddd"
-content_hash = "sha256:f5cf626dd5198c2307adff8e44d872db8e0edc30d5bc7472eba461382ee536a3"
-size = 21756
-mtime_ms = 1788354582427
-storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/801f4039-a41a-4821-bd05-ab10aacffddd/9b26a41c-3069-485e-a20c-cb4273bf7769"
-storage_version_token = "1788354595042307"
+content_hash = "sha256:af1b38293532788ce5711b58e2860b16b463d7fb3a9797e8d6c2f1b190a0da2d"
+size = 12236
+mtime_ms = 1794501430018
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/801f4039-a41a-4821-bd05-ab10aacffddd/0c82bee8-aba4-4256-bdad-acb58597b9bb"
+storage_version_token = "1794501471476794"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -28,13 +34,13 @@ id = "P0ZdMK5e3uo5_zc_NP5nY"
 uri = "file://docs/ETO_TRACKER_UX_STANDARDS.md"
 type = "text"
 title = "ETO Tracker UX Standards Discovery"
-description = "Evidence-based Markdown inventory of implemented UX patterns, reusable candidates, tokens, inconsistencies, and ETO-specific decisions."
+description = "Refreshed current UI patterns, required fields, department reassignment, Admin tabs, filters, calculator and email audit; unresolved UX/accessibility gaps remain explicit."
 logical_id = "2debb5e5-fd72-4445-bd83-6735c462f0b6"
-content_hash = "sha256:654666b67315cd70abf6cdbb591bfc05ee36247628136c513f999648449398e7"
-size = 28326
-mtime_ms = 1790189601851
-storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/2debb5e5-fd72-4445-bd83-6735c462f0b6/1930eb30-eb8b-44d9-a007-cfb98927f036"
-storage_version_token = "1790189613907855"
+content_hash = "sha256:c096af43a2d0bb5a188e7c2181feb45b4bdd8f9a0a3938de86be02d6d0c86c71"
+size = 9961
+mtime_ms = 1794501433946
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/2debb5e5-fd72-4445-bd83-6735c462f0b6/c4e6ac5a-5736-4a8d-968e-98366cf64919"
+storage_version_token = "1794501472112439"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -42,13 +48,13 @@ id = "oisbrENBsnhJvi5xFY-gh"
 uri = "file://docs/ETO_MVP_Contract.md"
 type = "text"
 title = "ETO Tracker — MVP Contract"
-description = "Updated MVP baseline: workflow, roles, intake, data, notifications, reporting, and technical scope."
+description = "Refreshed delivered baseline, workflow and notification acceptance expectations, security/data integrity boundaries and explicitly deferred capabilities."
 logical_id = "63bba07d-1f86-430d-9dbd-dba1ed90108c"
-content_hash = "sha256:d6e623941e4e9cc8a0bf06de7ab0692c83cbbec5910325376d7fcfda84ae377c"
-size = 11527
-mtime_ms = 1790738362151
-storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/63bba07d-1f86-430d-9dbd-dba1ed90108c/4a149a24-142e-4a7b-a96c-5d64d6ea4456"
-storage_version_token = "1790738379526325"
+content_hash = "sha256:7606733647edc1d44dbc7cd90fcce6f7ae97e94d47ca962c34b9dabd4a5eccb4"
+size = 8611
+mtime_ms = 1794501430282
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/63bba07d-1f86-430d-9dbd-dba1ed90108c/c845336c-fffe-4196-a88f-15ef081ef730"
+storage_version_token = "1794501472718513"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -56,13 +62,13 @@ id = "KeKOCSSzoPZ3NAu2uIoC6"
 uri = "file://docs/ETO_Business_Process_Brief.md"
 type = "text"
 title = "ETO — Business & Process Brief"
-description = "Updated business process, current stages, review handoffs, and remaining goals."
+description = "Refreshed business process: entity-specific ownership, optional reviews, deadlines, calculated quotes, notifications, audit and remaining goals."
 logical_id = "57184100-84bb-4faf-982f-9c1bf5c069ec"
-content_hash = "sha256:0743755a1e90fb098d631446f1ca39b2a7ea8e1516220d0717099206256cdd5f"
-size = 7149
-mtime_ms = 1790738262562
-storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/57184100-84bb-4faf-982f-9c1bf5c069ec/aafb6f8b-4406-4862-b5aa-c5d1d9fcc9a1"
-storage_version_token = "1790738380242267"
+content_hash = "sha256:ade818009d8dd8a3e23b84fd82f4d2001cb74e85167641e7795caa98a2fe7bc6"
+size = 7274
+mtime_ms = 1794501167113
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/57184100-84bb-4faf-982f-9c1bf5c069ec/18b29914-4762-459c-b3b4-b3daa965ae01"
+storage_version_token = "1794501473363655"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -70,13 +76,13 @@ id = "8r8xUNon9aoCv8l_G2N0q"
 uri = "file://docs/ETO_MVP_Solution_Blueprint.md"
 type = "text"
 title = "ETO Tracker — MVP Solution Blueprint"
-description = "Updated as-built screens, data objects, workflow, integrations, and deferred features."
+description = "Refreshed as-built system/screen map, identity sequence, workflow, all 20 CRM application tables and integration boundaries."
 logical_id = "d8737613-f1e3-4ebe-aab8-32011075ce6e"
-content_hash = "sha256:7c9eb6310b055b647ac48b33e7556ce48d2ec21d8f2094cf2c30cb2bcb3fe807"
-size = 7560
-mtime_ms = 1790738321995
-storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/d8737613-f1e3-4ebe-aab8-32011075ce6e/c9f36ce3-37d8-41f7-b58e-74114ad4e952"
-storage_version_token = "1790738380878280"
+content_hash = "sha256:fafa3a3fe6329ca74f3fc83b2842fbf9ea2bc4d7cbb01e4599d40202cadbc4e4"
+size = 9030
+mtime_ms = 1794501235061
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/d8737613-f1e3-4ebe-aab8-32011075ce6e/06d15bc4-e57c-45e7-822f-85925d98e220"
+storage_version_token = "1794501473993161"
 content_type = "text/markdown"
 
 [[outputs]]
@@ -84,13 +90,13 @@ id = "VWZqF_PmpYL2M7SdP8x1O"
 uri = "file://docs/ETO_Tracker_Technical_Details.md"
 type = "text"
 title = "ETO Tracker — Technical Details and End-to-End Flow"
-description = "As-built architecture, functions, HTTP API, data model, stage pipeline, security, attachments, notifications, and failure boundaries."
+description = "Refreshed architecture, API operations, 20-table inventory, formulas, authentication, Graph event audit, storage, configuration and recovery guidance."
 logical_id = "c04d0894-a0b7-4ce9-9111-ab96d56dd2f1"
-content_hash = "sha256:af272fd85cb0811444ef178efc3abd0dab22bd353a1e18579bf0ffa696d55f15"
-size = 28245
-mtime_ms = 1790738909094
-storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/c04d0894-a0b7-4ce9-9111-ab96d56dd2f1/19d32bf5-e22f-4256-909a-138e771ee799"
-storage_version_token = "1790738919586147"
+content_hash = "sha256:c45e146fcf47de0338f078b1f6dd482f50d40af5027f203e9a9483d77b057158"
+size = 17629
+mtime_ms = 1794501432978
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:e0c45f17-4b90-4c68-91cf-3557616ef01d/c04d0894-a0b7-4ce9-9111-ab96d56dd2f1/6730d715-c763-4c49-9147-e3bd46cea616"
+storage_version_token = "1794501474571851"
 content_type = "text/markdown"
 
 [[outputs]]
