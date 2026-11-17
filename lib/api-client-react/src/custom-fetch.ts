@@ -14,7 +14,7 @@ const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 export const ROLE_SIMULATION_HEADER = "x-eto-simulated-role";
 export const ROLE_SIMULATION_STORAGE_KEY = "eto-tracker.simulated-role";
-const VALID_SIMULATED_ROLES = new Set(["sales", "art", "engineering", "production"]);
+const VALID_SIMULATED_ROLES = new Set(["sales", "art", "engineering", "production", "eng-prod"]);
 
 // ---------------------------------------------------------------------------
 // Module-level configuration

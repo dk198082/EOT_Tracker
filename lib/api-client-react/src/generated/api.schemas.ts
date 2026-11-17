@@ -198,9 +198,9 @@ export const ReviewAssignmentDefaultsInputEntity = {
 
 export interface ReviewAssignmentDefaultsInput {
   entity?: ReviewAssignmentDefaultsInputEntity;
-  /** Must belong to a user with the Engineering role */
+  /** Must belong to a user with the Engineering or Eng/Prod role */
   engineeringUserId: number;
-  /** Must belong to a user with the Production role */
+  /** Must belong to a user with the Production or Eng/Prod role */
   productionUserId: number;
 }
 
@@ -208,7 +208,7 @@ export interface UserCreateInput {
   /** @minLength 1 */
   name: string;
   email: string;
-  /** One of: none, sales, art, engineering, production, admin, superuser */
+  /** One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser */
   role: string;
 }
 
@@ -221,7 +221,7 @@ export interface User {
   authId?: string | null;
   name: string;
   email: string;
-  /** One of: none, sales, art, engineering, production, admin, superuser */
+  /** One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser */
   role: string;
   createdAt: string;
 }
@@ -239,7 +239,7 @@ export type CurrentUser = User & ({
 });
 
 export interface UserRoleInput {
-  /** One of: none, sales, art, engineering, production, admin, superuser */
+  /** One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser */
   role: string;
 }
 

@@ -1428,10 +1428,10 @@ components:
           default: TOUS
         engineeringUserId:
           type: integer
-          description: "Must belong to a user with the Engineering role"
+          description: "Must belong to a user with the Engineering or Eng/Prod role"
         productionUserId:
           type: integer
-          description: "Must belong to a user with the Production role"
+          description: "Must belong to a user with the Production or Eng/Prod role"
 
     UserCreateInput:
       type: object
@@ -1445,7 +1445,7 @@ components:
           format: email
         role:
           type: string
-          description: "One of: none, sales, art, engineering, production, admin, superuser"
+          description: "One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser"
 
     User:
       type: object
@@ -1462,7 +1462,7 @@ components:
           type: string
         role:
           type: string
-          description: "One of: none, sales, art, engineering, production, admin, superuser"
+          description: "One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser"
         createdAt:
           type: string
           format: date-time
@@ -1489,7 +1489,7 @@ components:
       properties:
         role:
           type: string
-          description: "One of: none, sales, art, engineering, production, admin, superuser"
+          description: "One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser"
 
     UserSyncInput:
       type: object

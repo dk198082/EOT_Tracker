@@ -10,6 +10,6 @@ export interface UserCreateInput {
   /** @minLength 1 */
   name: string;
   email: string;
-  /** One of: none, sales, art, engineering, production, admin, superuser */
+  /** One of: none, sales, art, engineering, production, eng-prod (Eng/Prod), admin, superuser */
   role: string;
 }

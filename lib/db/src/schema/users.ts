@@ -11,7 +11,7 @@ export const usersTable = crmSchema.table(ETO_TABLE_NAMES.users, {
   authId: text("clerk_id").unique(),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  role: text("role").notNull().default("sales"), // none | sales | art | engineering | production | admin | superuser
+  role: text("role").notNull().default("sales"), // none | sales | art | engineering | production | eng-prod | admin | superuser
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

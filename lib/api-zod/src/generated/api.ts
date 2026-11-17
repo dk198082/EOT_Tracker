@@ -132,7 +132,7 @@ export const GetMeResponse = zod.object({
   "authId": zod.string().nullish().describe('Null until the user first signs in'),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser'),
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser'),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
   "actualRole": zod.string().describe('The authenticated user\'s stored role'),
@@ -165,8 +165,8 @@ export const updateReviewAssignmentDefaultsBodyEntityDefault = `TOUS`;
 
 export const UpdateReviewAssignmentDefaultsBody = zod.object({
   "entity": zod.enum(['TOUS', 'TOUK']).default(updateReviewAssignmentDefaultsBodyEntityDefault),
-  "engineeringUserId": zod.number().int().describe('Must belong to a user with the Engineering role'),
-  "productionUserId": zod.number().int().describe('Must belong to a user with the Production role')
+  "engineeringUserId": zod.number().int().describe('Must belong to a user with the Engineering or Eng\/Prod role'),
+  "productionUserId": zod.number().int().describe('Must belong to a user with the Production or Eng\/Prod role')
 })
 
 export const UpdateReviewAssignmentDefaultsResponse = zod.object({
@@ -193,7 +193,7 @@ export const SyncUserResponse = zod.object({
   "authId": zod.string().nullish().describe('Null until the user first signs in'),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser'),
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser'),
   "createdAt": zod.coerce.date()
 })
 
@@ -206,7 +206,7 @@ export const UpdateUserRoleParams = zod.object({
 })
 
 export const UpdateUserRoleBody = zod.object({
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser')
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser')
 })
 
 export const UpdateUserRoleResponse = zod.object({
@@ -214,7 +214,7 @@ export const UpdateUserRoleResponse = zod.object({
   "authId": zod.string().nullish().describe('Null until the user first signs in'),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser'),
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser'),
   "createdAt": zod.coerce.date()
 })
 
@@ -231,7 +231,7 @@ export const ListUsersResponseItem = zod.object({
   "authId": zod.string().nullish().describe('Null until the user first signs in'),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser'),
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser'),
   "createdAt": zod.coerce.date()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -246,7 +246,7 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
 export const CreateUserBody = zod.object({
   "name": zod.string().min(1),
   "email": zod.string().email(),
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser')
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser')
 })
 
 export const CreateUserResponse = zod.object({
@@ -254,7 +254,7 @@ export const CreateUserResponse = zod.object({
   "authId": zod.string().nullish().describe('Null until the user first signs in'),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.string().describe('One of: none, sales, art, engineering, production, admin, superuser'),
+  "role": zod.string().describe('One of: none, sales, art, engineering, production, eng-prod (Eng\/Prod), admin, superuser'),
   "createdAt": zod.coerce.date()
 })
 

@@ -9,8 +9,8 @@ import type { ReviewAssignmentDefaultsInputEntity } from './reviewAssignmentDefa
 
 export interface ReviewAssignmentDefaultsInput {
   entity?: ReviewAssignmentDefaultsInputEntity;
-  /** Must belong to a user with the Engineering role */
+  /** Must belong to a user with the Engineering or Eng/Prod role */
   engineeringUserId: number;
-  /** Must belong to a user with the Production role */
+  /** Must belong to a user with the Production or Eng/Prod role */
   productionUserId: number;
 }
